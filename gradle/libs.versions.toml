@@ -1,0 +1,20 @@
+[versions]
+paper-api = "26.3.build.+"
+minecraft = "26.3"
+
+paperweight-userdev = "2.0.0-beta.24"
+run-task = "3.1.0"
+
+fake-player-plus = "dev" # 2.2.1
+lamp = "4.0.0"
+kotlinx-coroutines = "1.11.0"
+
+[libraries]
+fake-player-plus = { module = "com.coderxi.plugin.fakeplayer:api", version.ref = "fake-player-plus" }
+lamp-common = { module = "io.github.revxrsal:lamp.common", version.ref = "lamp" }
+lamp-bukkit = { module = "io.github.revxrsal:lamp.bukkit", version.ref = "lamp" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+
+[plugins]
+paperweight-userdev = { id = "io.papermc.paperweight.userdev", version.ref = "paperweight-userdev" }
+run-paper = { id = "xyz.jpenilla.run-paper", version.ref = "run-task" }
