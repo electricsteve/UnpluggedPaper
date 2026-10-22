@@ -2,10 +2,15 @@ package dev.electricsteve.unpluggedPaper.commands;
 
 import com.coderxi.plugin.fakeplayer.api.manager.FakePlayerManager;
 
-import org.bukkit.Bukkit;
-import org.bukkit.command.CommandSender;
+import net.kyori.adventure.text.Component;
+
+import org.bukkit.Location;
+import org.bukkit.entity.Player;
+
+import java.util.UUID;
 
 import dev.electricsteve.unpluggedPaper.UnpluggedPaper;
+import dev.electricsteve.unpluggedPaper.UnpluggedPaperApiImpl;
 import dev.electricsteve.unpluggedPaper.kotlin.FakePlayerPlusJava;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
@@ -28,26 +33,35 @@ public class TestingCommand {
     @Subcommand("fake")
     @Description("Spawns a fake player with this username")
     public void fake(BukkitCommandActor actor, String name) {
+        UnpluggedPaperApiImpl.spawnPlayerWithSkin(actor, name, plugin, null, null);
+    }
+
+    @Subcommand("unplug")
+    public void unplug(BukkitCommandActor actor) {
+        Player player = actor.asPlayer();
+        if (player == null) {
+            actor.reply("You must be a player to use this command!");
+            return;
+        }
+        String name = player.getName();
+        Location location = player.getLocation();
+        UUID uuid = player.getUniqueId();
+
+        player.kick(Component.text("You are now afk!"));
+
         FakePlayerManager fpm = this.plugin.getFppComponent().getFpm();
-        CommandSender console = Bukkit.getConsoleSender();
-        FakePlayerPlusJava.spawn(
-            fpm,
-            name,
-            console,
-            null
-        ).thenAccept(fakePlayer -> {
-            if (fakePlayer == null) return;
-            actor.reply("Spawned fake player " + fakePlayer.getName() + "!");
-            FakePlayerPlusJava.getPlayerTexturesByName(name, true).thenAccept(playerTextures -> {
-                if (playerTextures == null) {
-                    actor.reply("Failed to get player textures for " + name + "!");
-                    return;
+        FakePlayerPlusJava.getFromRepository(fpm, name).thenAccept(fakePlayer -> {
+            if (fakePlayer != null) {
+                UUID existingUuid = fakePlayer.getUuid();
+                if (existingUuid != uuid) {
+                    try {
+                        FakePlayerPlusJava.deleteFromRepository(fpm, existingUuid).get();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                    UnpluggedPaperApiImpl.spawnPlayerWithSkin(actor, name, plugin, location, uuid);
                 }
-                FakePlayerPlusJava.setTextures(this.plugin, fakePlayer, playerTextures).thenAccept(_ -> {
-                    actor.reply("Set textures for fake player " + fakePlayer.getName() + "!");
-                });
-                FakePlayerPlusJava.saveSkin(fpm, fakePlayer);
-            });
+            }
         });
     }
 }

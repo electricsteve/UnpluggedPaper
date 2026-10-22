@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import org.bukkit.Location
 import org.bukkit.command.CommandSender
 import org.bukkit.plugin.Plugin
+import java.util.UUID
 import java.util.concurrent.CompletableFuture
 
 object FakePlayerPlusJava {
@@ -16,10 +17,11 @@ object FakePlayerPlusJava {
         manager: FakePlayerManager,
         name: String,
         sender: CommandSender,
-        location: Location?
+        location: Location?,
+        uuid: UUID?
     ): CompletableFuture<FakePlayer?> =
         FoliaCoroutines.run(Dispatchers.Default) {
-            manager.spawn(name, sender, location)
+            manager.spawn(name, sender, location, uuid)
         }
 
     @JvmStatic
@@ -48,4 +50,22 @@ object FakePlayerPlusJava {
     ): CompletableFuture<Unit> = FoliaCoroutines.run(FoliaCoroutines.on(plugin, fakePlayer.player)) {
         fakePlayer.nms.setTextures(textures.value, textures.signature)
     }
+
+    @JvmStatic
+    fun getFromRepository(
+        fakePlayerManager: FakePlayerManager,
+        name: String
+    ): CompletableFuture<FakePlayer?> =
+        FoliaCoroutines.run(Dispatchers.Default) {
+            fakePlayerManager.getFromRepository(name)
+        }
+
+    @JvmStatic
+    fun deleteFromRepository(
+        fakePlayerManager: FakePlayerManager,
+        uuid: UUID
+    ): CompletableFuture<Unit> =
+        FoliaCoroutines.run(Dispatchers.Default) {
+            fakePlayerManager.deleteFromRepository(uuid)
+        }
 }
