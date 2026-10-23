@@ -4,6 +4,7 @@ minecraft = "26.3"
 
 paperweight-userdev = "2.0.0-beta.24"
 run-task = "3.1.0"
+lombok = "9.8.2"
 
 fake-player-plus = "dev" # 2.2.1
 lamp = "4.0.0"
@@ -18,3 +19,4 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 [plugins]
 paperweight-userdev = { id = "io.papermc.paperweight.userdev", version.ref = "paperweight-userdev" }
 run-paper = { id = "xyz.jpenilla.run-paper", version.ref = "run-task" }
+lombok = { id = "io.freefair.lombok", version.ref = "lombok" }

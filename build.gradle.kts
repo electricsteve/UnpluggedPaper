@@ -3,6 +3,7 @@ plugins {
     kotlin("jvm") version "2.3.0"
     alias(libs.plugins.paperweight.userdev)
     alias(libs.plugins.run.paper)
+    alias(libs.plugins.lombok)
 }
 
 repositories {
