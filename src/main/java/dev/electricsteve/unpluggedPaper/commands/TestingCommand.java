@@ -1,5 +1,7 @@
 package dev.electricsteve.unpluggedPaper.commands;
 
+import com.coderxi.plugin.fakeplayer.api.entity.FakePlayer;
+import com.coderxi.plugin.fakeplayer.api.entity.FakePlayerSettings;
 import com.coderxi.plugin.fakeplayer.api.manager.FakePlayerManager;
 import com.coderxi.plugin.fakeplayer.api.model.PlayerTextures;
 import com.destroystokyo.paper.profile.ProfileProperty;
@@ -7,15 +9,19 @@ import com.destroystokyo.paper.profile.ProfileProperty;
 import net.kyori.adventure.text.Component;
 
 import org.bukkit.Bukkit;
+import org.bukkit.GameRules;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 
 import dev.electricsteve.unpluggedPaper.UnpluggedPaper;
 import dev.electricsteve.unpluggedPaper.UnpluggedPaperApiImpl;
 import dev.electricsteve.unpluggedPaper.api.PlayerSpawnOptions;
+import dev.electricsteve.unpluggedPaper.api.UPFakePlayerSettings;
 import dev.electricsteve.unpluggedPaper.kotlin.FakePlayerPlusJava;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Subcommand;
@@ -23,6 +29,23 @@ import revxrsal.commands.bukkit.actor.BukkitCommandActor;
 
 @Command("testing")
 public class TestingCommand {
+    private static final Function<World, FakePlayerSettings> DEFAULT_FAKE_PLAYER_SETTINGS = (world) -> new UPFakePlayerSettings(
+        true, // collidable
+        true, // pickupItems
+        false, // invulnerable
+        false, // infiniteFoodLevel
+        false, // autoReplenish
+        false, // autoFish
+        Bukkit.getServer().getSimulationDistance(), // simulationDistance
+        false, // xpNoCooldown
+        false, // autoEquipTool
+        world.getGameRuleValue(GameRules.KEEP_INVENTORY), // keepInventory
+        FakePlayerSettings.InteractedAction.NONE, // interactedAction
+        FakePlayerSettings.InteractedAction.NONE, // shiftInteractedAction
+        FakePlayerSettings.DeathAction.QUIT, // deathAction
+        FakePlayerSettings.KeepingMode.ALWAYS // keepingMode
+    );
+
     private final UnpluggedPaper plugin;
 
     public TestingCommand(UnpluggedPaper plugin) {
@@ -41,6 +64,7 @@ public class TestingCommand {
             actor.reply("You must be a player to use this command!");
             return;
         }
+        World world = player.getWorld();
         String name = player.getName();
         Location location = player.getLocation();
         UUID uuid = player.getUniqueId();
@@ -75,6 +99,7 @@ public class TestingCommand {
                     .setClientLoaded(true)
                     .health(health)
                     .foodLevel(foodLevel)
+                    .fakePlayerSettings(DEFAULT_FAKE_PLAYER_SETTINGS.apply(world))
                     .build();
                 UnpluggedPaperApiImpl.spawnPlayerWithUuidAndSkin(name, plugin, options);
             });

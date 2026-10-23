@@ -20,6 +20,9 @@ public class UnpluggedPaperApiImpl {
             options.getUuid()
         ).thenAccept(fakePlayer -> {
             if (fakePlayer == null) return;
+            if (options.getFakePlayerSettings() != null) {
+                options.getFakePlayerSettings().sync(fakePlayer.getSettings());
+            }
             fakePlayer.getPlayer().getScheduler().run(plugin, _ -> {
                 if (options.getHealth() != -1.0) fakePlayer.getPlayer().setHealth(options.getHealth());
                 if (options.getFoodLevel() != -1) fakePlayer.getPlayer().setFoodLevel(options.getFoodLevel());

@@ -1,5 +1,6 @@
 package dev.electricsteve.unpluggedPaper.api;
 
+import com.coderxi.plugin.fakeplayer.api.entity.FakePlayerSettings;
 import com.coderxi.plugin.fakeplayer.api.model.PlayerTextures;
 
 import org.bukkit.Location;
@@ -42,4 +43,8 @@ public class PlayerSpawnOptions {
     /// This removes the delay before the player can be hit.
     @Builder.Default
     private boolean setClientLoaded = false;
+    /// The fake player settings to use when spawning the player.
+    /// If not set, defaults to the default settings.
+    @Nullable
+    private FakePlayerSettings fakePlayerSettings;
 }
