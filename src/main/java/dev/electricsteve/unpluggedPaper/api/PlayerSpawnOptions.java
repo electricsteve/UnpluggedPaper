@@ -47,4 +47,8 @@ public class PlayerSpawnOptions {
     /// If not set, defaults to the default settings.
     @Nullable
     private FakePlayerSettings fakePlayerSettings;
+    /// Whether advancements should be enabled for the player.
+    /// If not set, defaults to false.
+    @Builder.Default
+    private boolean enableAdvancements = false;
 }

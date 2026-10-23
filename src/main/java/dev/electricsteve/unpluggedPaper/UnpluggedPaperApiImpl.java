@@ -28,6 +28,7 @@ public class UnpluggedPaperApiImpl {
                 if (options.getFoodLevel() != -1) fakePlayer.getPlayer().setFoodLevel(options.getFoodLevel());
                 if (!options.isSleepingIgnored()) fakePlayer.getPlayer().setSleepingIgnored(false);
                 if (options.isSetClientLoaded()) fakePlayer.getNms().setClientLoaded();
+                if (options.isEnableAdvancements()) fakePlayer.getNms().enableAdvancements();
             }, () -> {});
 
             if (options.getPlayerTextures() != null) {

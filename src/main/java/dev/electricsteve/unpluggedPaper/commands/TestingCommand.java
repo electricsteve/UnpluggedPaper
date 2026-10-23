@@ -100,6 +100,7 @@ public class TestingCommand {
                     .health(health)
                     .foodLevel(foodLevel)
                     .fakePlayerSettings(DEFAULT_FAKE_PLAYER_SETTINGS.apply(world))
+                    .enableAdvancements(true)
                     .build();
                 UnpluggedPaperApiImpl.spawnPlayerWithUuidAndSkin(name, plugin, options);
             });
