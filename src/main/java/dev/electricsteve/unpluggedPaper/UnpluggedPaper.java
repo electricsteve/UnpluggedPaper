@@ -6,8 +6,10 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import dev.electricsteve.unpluggedPaper.commands.TestingCommand;
+import lombok.Getter;
 import revxrsal.commands.bukkit.BukkitLamp;
 
+@Getter
 public final class UnpluggedPaper extends JavaPlugin {
     private static final String REQUIRED_FPP_VERSION = "2.2.50";
 
@@ -31,8 +33,4 @@ public final class UnpluggedPaper extends JavaPlugin {
         // Plugin shutdown logic
     }
 
-    // Should really lombok ts
-    public UnpluggedFppComponent getFppComponent() {
-        return fppComponent;
-    }
 }
