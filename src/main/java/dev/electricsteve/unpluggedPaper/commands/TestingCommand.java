@@ -40,6 +40,7 @@ public class TestingCommand {
         false, // xpNoCooldown
         false, // autoEquipTool
         world.getGameRuleValue(GameRules.KEEP_INVENTORY), // keepInventory
+        true, // deathMessage
         FakePlayerSettings.InteractedAction.NONE, // interactedAction
         FakePlayerSettings.InteractedAction.NONE, // shiftInteractedAction
         FakePlayerSettings.DeathAction.QUIT, // deathAction

@@ -20,6 +20,7 @@ public class UPFakePlayerSettings implements FakePlayerSettings {
     private boolean xpNoCooldown;
     private boolean autoEquipTool;
     private boolean keepInventory;
+    private boolean deathMessage;
     private InteractedAction interactedAction;
     private InteractedAction shiftInteractedAction;
     private DeathAction deathAction;
@@ -70,5 +71,10 @@ public class UPFakePlayerSettings implements FakePlayerSettings {
     @Override
     public boolean getKeepInventory() {
         return this.keepInventory;
+    }
+
+    @Override
+    public boolean getDeathMessage() {
+        return this.deathMessage;
     }
 }
