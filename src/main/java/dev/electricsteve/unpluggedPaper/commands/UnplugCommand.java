@@ -1,6 +1,5 @@
 package dev.electricsteve.unpluggedPaper.commands;
 
-import com.coderxi.plugin.fakeplayer.api.entity.FakePlayer;
 import com.coderxi.plugin.fakeplayer.api.entity.FakePlayerSettings;
 import com.coderxi.plugin.fakeplayer.api.manager.FakePlayerManager;
 import com.coderxi.plugin.fakeplayer.api.model.PlayerTextures;
@@ -24,11 +23,9 @@ import dev.electricsteve.unpluggedPaper.api.PlayerSpawnOptions;
 import dev.electricsteve.unpluggedPaper.api.UPFakePlayerSettings;
 import dev.electricsteve.unpluggedPaper.kotlin.FakePlayerPlusJava;
 import revxrsal.commands.annotation.Command;
-import revxrsal.commands.annotation.Subcommand;
 import revxrsal.commands.bukkit.actor.BukkitCommandActor;
 
-@Command("testing")
-public class TestingCommand {
+public class UnplugCommand {
     private static final Function<World, FakePlayerSettings> DEFAULT_FAKE_PLAYER_SETTINGS = (world) -> new UPFakePlayerSettings(
         true, // collidable
         true, // pickupItems
@@ -49,16 +46,11 @@ public class TestingCommand {
 
     private final UnpluggedPaper plugin;
 
-    public TestingCommand(UnpluggedPaper plugin) {
+    public UnplugCommand(UnpluggedPaper plugin) {
         this.plugin = plugin;
     }
 
-    @Subcommand("greet")
-    public void greet(BukkitCommandActor actor) {
-        actor.reply("Hello, " + actor.name() + "!");
-    }
-
-    @Subcommand("unplug")
+    @Command("unplug")
     public void unplug(BukkitCommandActor actor) {
         Player player = actor.asPlayer();
         if (player == null) {

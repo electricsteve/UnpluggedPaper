@@ -5,7 +5,7 @@ import com.coderxi.plugin.fakeplayer.api.FakePlayerPlusPluginApi;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import dev.electricsteve.unpluggedPaper.commands.TestingCommand;
+import dev.electricsteve.unpluggedPaper.commands.UnplugCommand;
 import lombok.Getter;
 import revxrsal.commands.bukkit.BukkitLamp;
 
@@ -25,7 +25,7 @@ public final class UnpluggedPaper extends JavaPlugin {
         this.fppComponent = new UnpluggedFppComponent();
         FakePlayerPlusPluginApi.Companion.getApi().registerComponent(fppComponent);
         var lamp = BukkitLamp.builder(this).build();
-        lamp.register(new TestingCommand(this));
+        lamp.register(new UnplugCommand(this));
     }
 
     @Override
