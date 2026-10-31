@@ -4,11 +4,13 @@ plugins {
     alias(libs.plugins.paperweight.userdev)
     alias(libs.plugins.run.paper)
     alias(libs.plugins.lombok)
+    alias(libs.plugins.shadow)
 }
 
 repositories {
     mavenCentral()
     mavenLocal() // This is currently used for FakePlayerPlus
+    maven { url = uri("https://jitpack.io") }
 }
 
 dependencies {
@@ -17,6 +19,7 @@ dependencies {
     implementation(libs.lamp.common)
     implementation(libs.lamp.bukkit)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.configlib)
 }
 
 java {
@@ -52,5 +55,13 @@ tasks {
     withType<JavaCompile> {
         // Preserve parameter names in the bytecode
         options.compilerArgs.add("-parameters")
+    }
+
+    jar {
+        archiveClassifier.set("slim")
+    }
+
+    shadowJar {
+        archiveClassifier.set("")
     }
 }
