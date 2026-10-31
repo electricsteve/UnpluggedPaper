@@ -35,6 +35,13 @@ public class UnpluggedPaperApiImpl {
                 FakePlayerPlusJava.setTextures(plugin, fakePlayer, options.getPlayerTextures()).thenAccept(_ -> {});
                 FakePlayerPlusJava.saveSkin(fpm, fakePlayer);
             }
+
+            if (options.getDurationMillis() > 0) {
+                fakePlayer.getPlayer().getScheduler().runDelayed(plugin, _ -> {
+                        fakePlayer.quit("The unplugged session has ended.");
+                    }, () -> {}, options.getDurationMillis() / 50
+                );
+            }
         });
     }
 }

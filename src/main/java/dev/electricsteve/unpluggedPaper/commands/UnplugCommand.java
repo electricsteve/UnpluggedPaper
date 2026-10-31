@@ -23,6 +23,8 @@ import dev.electricsteve.unpluggedPaper.api.PlayerSpawnOptions;
 import dev.electricsteve.unpluggedPaper.api.UPFakePlayerSettings;
 import dev.electricsteve.unpluggedPaper.kotlin.FakePlayerPlusJava;
 import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Default;
+import revxrsal.commands.annotation.Range;
 import revxrsal.commands.bukkit.actor.BukkitCommandActor;
 
 public class UnplugCommand {
@@ -51,7 +53,8 @@ public class UnplugCommand {
     }
 
     @Command("unplug")
-    public void unplug(BukkitCommandActor actor) {
+    public void unplug(BukkitCommandActor actor, @Default("129600") @Range(min = 1) int durationMinutes, @Default(" ") String reason) {
+        // TODO: reason + persist fake player
         Player player = actor.asPlayer();
         if (player == null) {
             actor.reply("You must be a player to use this command!");
@@ -94,6 +97,7 @@ public class UnplugCommand {
                     .foodLevel(foodLevel)
                     .fakePlayerSettings(DEFAULT_FAKE_PLAYER_SETTINGS.apply(world))
                     .enableAdvancements(true)
+                    .durationMillis(durationMinutes * 60L * 1000L)
                     .build();
                 UnpluggedPaperApiImpl.spawnPlayerWithUuidAndSkin(name, plugin, options);
             });

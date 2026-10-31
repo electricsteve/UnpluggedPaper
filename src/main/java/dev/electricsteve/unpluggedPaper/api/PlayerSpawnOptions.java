@@ -51,4 +51,7 @@ public class PlayerSpawnOptions {
     /// If not set, defaults to false.
     @Builder.Default
     private boolean enableAdvancements = false;
+    /// The duration in milliseconds to keep the player spawned for.
+    @Builder.Default
+    private long durationMillis = -1;
 }
