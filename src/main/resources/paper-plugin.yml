@@ -4,7 +4,7 @@ prefix: UNPLUGGED
 version: '${version}'
 
 main: dev.electricsteve.unpluggedPaper.UnpluggedPaper
-bootstrapper: dev.electricsteve.unpluggedPaper.UnpluggedPaperBootstrap
+#bootstrapper: dev.electricsteve.unpluggedPaper.UnpluggedPaperBootstrap
 api-version: '26.3'
 load: POSTWORLD
 
