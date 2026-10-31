@@ -47,27 +47,6 @@ public class UnpluggedConfiguration {
         boolean unpluggedHideFromOps
     ) {}
 
-    private Command command = new Command(
-        0,
-        3,
-        0,
-        true,
-        false
-    );
-
-    public record Command(
-        @Comment("Permission level required to use `/unplug`.")
-        int unplugCommandPermissions,
-        @Comment("Permission level for `/unplugged-admin`.")
-        int unpluggedAdminCommandPermissions,
-        @Comment("Permission level required to use `/afk`.")
-        int afkCommandPermissions,
-        @Comment("Enables the `/unplug` Command.")
-        boolean enableUnplugCommand,
-        @Comment("Enables the `/afk` Command. (Works the same as `/unplug`)")
-        boolean enableAfkCommand
-    ) {}
-
     private Messages messages = new Messages(
         false,
         false,

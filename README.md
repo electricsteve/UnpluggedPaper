@@ -16,6 +16,27 @@ Currently, the plugin has the following features:
   - It behaves as if you were connected to the server, but AFK and emulated by the server
   - If it gets killed, it automatically leaves
 
+## Differences with Unplugged AFK
+
+> I will be referring to Unplugged AFK as "UA", and Unplugged Paper as "UP"
+
+This project aims to have full feature compatibility with UA, as in, what you can do with UA, can be done with this plugin.
+For example, if you have a datapack that uses UA commands, it *SHOULD* work with UP (as long as they use `/unplug` and not `/afk`).
+But due to fundamental platform differences, the behaviour may not be 100% the same.
+The biggest difference you may notice is the config. For UP, we use YAML, instead of JSON.
+Some config options are missing from UP, mainly the permission levels options, because on Paper we use permissions for that.
+
+Full feature difference list:
+- YAML instead of JSON for config
+- Config options removed:
+  - `unplugCommandPermissions`
+  - `unpluggedAdminCommandPermissions`
+  - `afkCommandPermissions`
+  - `enableUnplugCommand`
+  - `enableAfkCommand`
+- No `/afk` command, I recommend you use another plugin that allows you to create command aliases if you want this command back.
+- 
+
 ## Install
 
 To install this, you first need to set up a [Paper](https://papermc.io/software/paper/) server. Follow those instructions first.
