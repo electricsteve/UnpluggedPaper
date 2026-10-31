@@ -2,6 +2,8 @@ package dev.electricsteve.unpluggedPaper;
 
 import com.coderxi.plugin.fakeplayer.api.FakePlayerPlusPluginApi;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -21,8 +23,20 @@ import revxrsal.commands.bukkit.BukkitLamp;
 public final class UnpluggedPaper extends JavaPlugin {
     private static final String REQUIRED_FPP_VERSION = "2.2.50";
 
+    public static Logger LOGGER = LogManager.getLogger("UnpluggedPaper");
+    private static boolean debug = Boolean.getBoolean("unplugged.debug"); // Set by command-line argument
+
     private UnpluggedFppComponent fppComponent;
     private UnpluggedConfiguration configuration;
+
+    /// Prints a debug log if debug logging is enabled. Only works after configuration loading (or if in IDE).
+    /// @param key message
+    /// @param args parameters
+    private static void debugLog(String key, Object... args) {
+        if (debug) {
+            LOGGER.info(String.format("[DEBUG] %s", key), args);
+        }
+    }
 
     @Override
     public void onEnable() {
@@ -48,6 +62,12 @@ public final class UnpluggedPaper extends JavaPlugin {
             UnpluggedConfiguration.class,
             properties
         );
+
+        if (this.configuration.getMain().debugMode()) debug = true;
+        if (!this.configuration.getMain().unpluggedPaperEnabled()) {
+            debugLog("unpluggedPaperEnabled set to false, exiting");
+            return;
+        }
 
         this.fppComponent = new UnpluggedFppComponent();
         FakePlayerPlusPluginApi.Companion.getApi().registerComponent(fppComponent);

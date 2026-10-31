@@ -37,7 +37,7 @@ configure<org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension> {
 tasks {
     runServer {
         minecraftVersion(libs.versions.minecraft.get())
-        jvmArgs("-Xms2G", "-Xmx2G", "-Dcom.mojang.eula.agree=true", "-Ddisable.watchdog=true")
+        jvmArgs("-Xms2G", "-Xmx2G", "-Dcom.mojang.eula.agree=true", "-Ddisable.watchdog=true", "-Dunplugged.debug=true")
         downloadPlugins {
 //            github("xiplugin", "FakePlayerPlus", "v2.2.1", "FakePlayerPlus-2.2.1.jar")
             // We are using a locally built dev version, so you'll have to place it in the plugin folder yourself
