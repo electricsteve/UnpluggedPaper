@@ -43,9 +43,9 @@ public class UnpluggedConfiguration {
         boolean resetHealthUponDeath,
         @Comment("Prevents the AFK bot from taking damage.")
         boolean unpluggedDisableDamage,
-        @Comment("[DOES NOTHING ATM] Makes the bot invisible to others.")
+        @Comment("Makes the bot invisible to others. (still shows on server list players)")
         boolean unpluggedHidePlayer,
-        @Comment("[DOES NOTHING ATM] Makes the bot invisible to to Operators as well.")
+        @Comment("Makes the bot invisible to to Operators as well.")
         boolean unpluggedHideFromOps
     ) {}
 

@@ -20,6 +20,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -183,6 +184,12 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                         .fakePlayerSettings(DEFAULT_FAKE_PLAYER_SETTINGS.apply(location.getWorld()))
                         .enableAdvancements(true)
                         .durationMillis(durationMillis)
+                        .durationOverCallback(_ -> {
+                            this.getPlayerEntry(uuid).ifPresent(entry -> entry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED));
+                            this.savePlayersConfiguration();
+                        })
+                        .hidePlayer(this.configuration.getUnplugged().unpluggedHidePlayer())
+                        .hidePlayerOps(this.configuration.getUnplugged().unpluggedHideFromOps())
                         .build();
                     UnpluggedPaperApiImpl.spawnPlayerWithUuidAndSkin(name, this, options);
                 });
@@ -255,6 +262,15 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
             && event.getEntity() instanceof Player player && isFakePlayer(player.getUniqueId())) {
             event.setCancelled(true);
         }
+    }
+
+    @EventHandler
+    private void onPlayerJoin(PlayerJoinEvent event) {
+        // TODO: this shouldn't be here, move this to something proper when doing the api
+        Player player = event.getPlayer();
+        if (!isFakePlayer(player.getUniqueId()) && this.getConfiguration().getUnplugged().unpluggedHidePlayer() && (this.getConfiguration().getUnplugged().unpluggedHideFromOps() || !player.isOp())) this.getServer().getOnlinePlayers().stream()
+            .filter(otherPlayer -> isFakePlayer(otherPlayer.getUniqueId()))
+            .forEach(fakePlayer -> player.hidePlayer(this, fakePlayer));
     }
 
     @Override

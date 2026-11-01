@@ -104,6 +104,8 @@ public class UnplugCommand {
                         this.plugin.getPlayerEntry(uuid).ifPresent(playerEntry -> playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED));
                         this.plugin.savePlayersConfiguration();
                     })
+                    .hidePlayer(this.plugin.getConfiguration().getUnplugged().unpluggedHidePlayer())
+                    .hidePlayerOps(this.plugin.getConfiguration().getUnplugged().unpluggedHideFromOps())
                     .build();
                 UnpluggedPaperApiImpl.spawnPlayerWithUuidAndSkin(name, plugin, options);
                 this.plugin.updatePlayerEntry(uuid, name, UnpluggedPlayers.UnpluggedStatus.ACTIVE, durationMillis, System.currentTimeMillis(), reason);

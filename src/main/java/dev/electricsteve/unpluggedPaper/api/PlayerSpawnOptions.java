@@ -59,4 +59,10 @@ public class PlayerSpawnOptions {
     /// The callback to run when the fake player is kicked because the `durationMillis` has been hit.
     @Nullable
     private Consumer<FakePlayer> durationOverCallback;
+    /// Whether to hide the fake player from other players (operators will still see the fake player)
+    @Builder.Default
+    private boolean hidePlayer = false;
+    /// Also hide fake player from operators (only works if hidePlayer is also true)
+    @Builder.Default
+    private boolean hidePlayerOps = false;
 }

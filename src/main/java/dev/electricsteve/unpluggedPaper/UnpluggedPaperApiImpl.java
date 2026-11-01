@@ -4,6 +4,8 @@ import com.coderxi.plugin.fakeplayer.api.manager.FakePlayerManager;
 
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.permissions.ServerOperator;
 
 import java.util.concurrent.TimeUnit;
 
@@ -25,10 +27,11 @@ public class UnpluggedPaperApiImpl {
             if (options.getFakePlayerSettings() != null) {
                 options.getFakePlayerSettings().sync(fakePlayer.getSettings());
             }
-            fakePlayer.getPlayer().getScheduler().run(plugin, _ -> {
-                if (options.getHealth() != -1.0) fakePlayer.getPlayer().setHealth(options.getHealth());
-                if (options.getFoodLevel() != -1) fakePlayer.getPlayer().setFoodLevel(options.getFoodLevel());
-                if (!options.isSleepingIgnored()) fakePlayer.getPlayer().setSleepingIgnored(false);
+            Player bukkitPlayer = fakePlayer.getPlayer();
+            bukkitPlayer.getScheduler().run(plugin, _ -> {
+                if (options.getHealth() != -1.0) bukkitPlayer.setHealth(options.getHealth());
+                if (options.getFoodLevel() != -1) bukkitPlayer.setFoodLevel(options.getFoodLevel());
+                if (!options.isSleepingIgnored()) bukkitPlayer.setSleepingIgnored(false);
                 if (options.isSetClientLoaded()) fakePlayer.getNms().setClientLoaded();
                 if (options.isEnableAdvancements()) fakePlayer.getNms().enableAdvancements();
             }, () -> {});
@@ -42,8 +45,12 @@ public class UnpluggedPaperApiImpl {
                 FakePlayerPlusJava.saveSkin(fpm, fakePlayer);
             }
 
+            if (options.isHidePlayer()) plugin.getServer().getOnlinePlayers().stream()
+                .filter(player -> (options.isHidePlayerOps() || !player.isOp()) && !player.getUniqueId().equals(fakePlayer.getUuid()))
+                .forEach(player -> player.getScheduler().run(plugin, _ -> player.hidePlayer(plugin, bukkitPlayer), () -> {}));
+
             if (options.getDurationMillis() > 0) {
-                Bukkit.getAsyncScheduler().runDelayed(plugin, _ -> fakePlayer.getPlayer().getScheduler().run(plugin, _ -> {
+                Bukkit.getAsyncScheduler().runDelayed(plugin, _ -> bukkitPlayer.getScheduler().run(plugin, _ -> {
                     fakePlayer.quit("The unplugged session has ended.");
                     if (options.getDurationOverCallback() != null) {
                         options.getDurationOverCallback().accept(fakePlayer);
