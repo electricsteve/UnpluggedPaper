@@ -41,7 +41,7 @@ public class UnpluggedConfiguration {
         long defaultUnpluggedTimeout,
         @Comment("Resets the AFK bots Health when killed. (set health to max, cancel death, leave)")
         boolean resetHealthUponDeath,
-        @Comment("[DOES NOTHING ATM] Prevents the AFK bot from taking damage.")
+        @Comment("Prevents the AFK bot from taking damage.")
         boolean unpluggedDisableDamage,
         @Comment("[DOES NOTHING ATM] Makes the bot invisible to others.")
         boolean unpluggedHidePlayer,

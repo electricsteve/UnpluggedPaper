@@ -18,6 +18,7 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -245,6 +246,14 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                 playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.TERMINATED);
                 savePlayersConfiguration();
             }
+        }
+    }
+
+    @EventHandler
+    private void onDamage(EntityDamageEvent event) {
+        if (this.getConfiguration().getUnplugged().unpluggedDisableDamage()
+            && event.getEntity() instanceof Player player && isFakePlayer(player.getUniqueId())) {
+            event.setCancelled(true);
         }
     }
 
