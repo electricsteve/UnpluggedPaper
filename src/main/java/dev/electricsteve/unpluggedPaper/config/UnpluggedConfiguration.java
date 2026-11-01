@@ -39,7 +39,7 @@ public class UnpluggedConfiguration {
     public record Unplugged(
         @Comment("Set the default timeout (in minutes). The default is for 90 days.")
         long defaultUnpluggedTimeout,
-        @Comment("[DOES NOTHING ATM] Resets the AFK bots Health when killed.")
+        @Comment("Resets the AFK bots Health when killed. (set health to max, cancel death, leave)")
         boolean resetHealthUponDeath,
         @Comment("[DOES NOTHING ATM] Prevents the AFK bot from taking damage.")
         boolean unpluggedDisableDamage,

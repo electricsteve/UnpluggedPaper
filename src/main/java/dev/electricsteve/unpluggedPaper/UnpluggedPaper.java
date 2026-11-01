@@ -13,8 +13,12 @@ import org.apache.logging.log4j.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -207,16 +211,38 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         savePlayersConfiguration();
     }
 
+    private boolean isFakePlayer(UUID uuid) {
+        return this.fppComponent.getFpm().isFake(uuid, false);
+    }
+
     @EventHandler
     private void onPlayerKick(PlayerKickEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
-        if (event.getCause().equals(PlayerKickEvent.Cause.DUPLICATE_LOGIN) && this.fppComponent.getFpm().isFake(uuid, false)) {
+        if (event.getCause().equals(PlayerKickEvent.Cause.DUPLICATE_LOGIN) && isFakePlayer(uuid)) {
             // A fake player is kicked because a real player with the same UUID logged in
             Optional<UnpluggedPlayers.PlayerEntry> optionalPlayerEntry = getPlayerEntry(uuid);
             if (optionalPlayerEntry.isPresent()) {
                 UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
                 if (!playerEntry.getStatus().equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE)) return;
                 playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.INTERRUPTED);
+                savePlayersConfiguration();
+            }
+        }
+    }
+
+    @EventHandler
+    private void onPlayerDeath(PlayerDeathEvent event) {
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+        if (isFakePlayer(uuid) && this.getConfiguration().getUnplugged().resetHealthUponDeath()) {
+            AttributeInstance attribute = player.getAttribute(Attribute.MAX_HEALTH);
+            player.setHealth(attribute != null ? attribute.getValue() : 20);
+            event.setCancelled(true);
+            Optional<UnpluggedPlayers.PlayerEntry> optionalPlayerEntry = getPlayerEntry(uuid);
+            if (optionalPlayerEntry.isPresent()) {
+                UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
+                if (!playerEntry.getStatus().equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE)) return;
+                playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.TERMINATED);
                 savePlayersConfiguration();
             }
         }
@@ -229,7 +255,7 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         for (UnpluggedPlayers.PlayerEntry playerEntry : unpluggedPlayers) {
             UnpluggedPlayers.UnpluggedStatus status = playerEntry.getStatus();
             if (!status.equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE) && !status.equals(UnpluggedPlayers.UnpluggedStatus.INACTIVE)) {
-                playerEntry.reset();
+                playerEntry.reset(); // TODO: move this to real player join
             }
         }
         savePlayersConfiguration();
