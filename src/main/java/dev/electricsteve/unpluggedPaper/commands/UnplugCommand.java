@@ -54,13 +54,13 @@ public class UnplugCommand {
     }
 
     @Command("unplug")
-    public void unplug(BukkitCommandActor actor, @Default("129600") @Range(min = 1) int durationMinutes, @Default(" ") String reason) {
-        // TODO: reason
+    public void unplug(BukkitCommandActor actor, @Default("0") @Range(min = 0) long durationMinutes, @Default("\"\"") String reason) {
         Player player = actor.asPlayer();
         if (player == null) {
             actor.reply("You must be a player to use this command!");
             return;
         }
+        if (durationMinutes == 0) durationMinutes = this.plugin.getConfiguration().getUnplugged().defaultUnpluggedTimeout();
         long durationMillis = durationMinutes * 60L * 1000L;
         World world = player.getWorld();
         String name = player.getName();

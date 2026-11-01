@@ -15,14 +15,16 @@ public class UnpluggedConfiguration {
         false
     );
 
+    // TODO: Implement unimplemented options
+
     public record Main(
         @Comment("Toggles the entire Unplug feature.")
         boolean unpluggedPaperEnabled,
         @Comment("Enables debugging output.")
         boolean debugMode,
-        @Comment("Enables reduced output for various information commands")
+        @Comment("[DOES NOTHING ATM] Enables reduced output for various information commands")
         boolean reducedListDebugInfo,
-        @Comment("Enables advanced Admin options, such as 'set'.")
+        @Comment("[DOES NOTHING ATM] Enables advanced Admin options, such as 'set'.")
         boolean advancedAdminOptions
     ) {}
 
@@ -37,13 +39,13 @@ public class UnpluggedConfiguration {
     public record Unplugged(
         @Comment("Set the default timeout (in minutes). The default is for 90 days.")
         long defaultUnpluggedTimeout,
-        @Comment("Resets the AFK bots Health when killed.")
+        @Comment("[DOES NOTHING ATM] Resets the AFK bots Health when killed.")
         boolean resetHealthUponDeath,
-        @Comment("Prevents the AFK bot from taking damage.")
+        @Comment("[DOES NOTHING ATM] Prevents the AFK bot from taking damage.")
         boolean unpluggedDisableDamage,
-        @Comment("Makes the bot invisible to others.")
+        @Comment("[DOES NOTHING ATM] Makes the bot invisible to others.")
         boolean unpluggedHidePlayer,
-        @Comment("Makes the bot invisible to to Operators as well.")
+        @Comment("[DOES NOTHING ATM] Makes the bot invisible to to Operators as well.")
         boolean unpluggedHideFromOps
     ) {}
 
@@ -55,13 +57,13 @@ public class UnpluggedConfiguration {
     );
 
     public record Messages(
-        @Comment("Enables the broadcasting of Unplugged status messages.")
+        @Comment("[DOES NOTHING ATM] Enables the broadcasting of Unplugged status messages.")
         boolean broadcastMessages,
-        @Comment("Enables the disabling of the default `player has joined` messages while bots are spawned, where possible.")
+        @Comment("[DOES NOTHING ATM] Enables the disabling of the default `player has joined` messages while bots are spawned, where possible.")
         boolean hideUnpluggedJoin,
-        @Comment("Enables the duration display of Unplugged status messages.")
+        @Comment("[DOES NOTHING ATM] Enables the duration display of Unplugged status messages.")
         boolean displayDuration,
-        @Comment("Enables the Feedback display of the reason why an Unplugged session ended")
+        @Comment("[DOES NOTHING ATM] Enables the Feedback display of the reason why an Unplugged session ended")
         boolean displayReturnFeedback
     ) {}
 }

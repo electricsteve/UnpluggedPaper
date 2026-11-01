@@ -115,7 +115,7 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(this, this);
 
         // Add back players that were unplugged when the server turned off
-        Bukkit.getScheduler().runTaskLater(this, _ -> addBackUnpluggedPlayers(), 1); // Schedule for 1 tick later, which should only happen once the server has loaded
+        Bukkit.getScheduler().runTaskLater(this, _ -> Bukkit.getAsyncScheduler().runNow(this, _ -> addBackUnpluggedPlayers()), 1); // Schedule for 1 tick later (and run async immediately), which should only happen once the server has loaded
     }
 
     public void savePlayersConfiguration() {
@@ -124,7 +124,6 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
 
     private void addBackUnpluggedPlayers() {
         long methodStartTime = System.nanoTime();
-        // TODO: move this async because it makes API calls and other IO
         List<UnpluggedPlayers.PlayerEntry> unpluggedPlayers = this.unpluggedPlayersConfig.getUnpluggedPlayers();
         for (UnpluggedPlayers.PlayerEntry playerEntry : unpluggedPlayers) {
             long endTime = playerEntry.getStartTime() + playerEntry.getTime();
