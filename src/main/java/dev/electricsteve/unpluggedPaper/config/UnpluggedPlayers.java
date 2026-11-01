@@ -19,7 +19,7 @@ public class UnpluggedPlayers {
     @AllArgsConstructor
     @Configuration
     public static class PlayerEntry {
-        private final UUID uuid;
+        private UUID uuid;
         private String name;
         private UnpluggedStatus status;
         private long time;

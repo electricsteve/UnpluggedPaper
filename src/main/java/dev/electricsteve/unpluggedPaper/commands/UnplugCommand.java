@@ -21,6 +21,7 @@ import dev.electricsteve.unpluggedPaper.UnpluggedPaper;
 import dev.electricsteve.unpluggedPaper.UnpluggedPaperApiImpl;
 import dev.electricsteve.unpluggedPaper.api.PlayerSpawnOptions;
 import dev.electricsteve.unpluggedPaper.api.UPFakePlayerSettings;
+import dev.electricsteve.unpluggedPaper.config.UnpluggedPlayers;
 import dev.electricsteve.unpluggedPaper.kotlin.FakePlayerPlusJava;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Default;
@@ -28,7 +29,7 @@ import revxrsal.commands.annotation.Range;
 import revxrsal.commands.bukkit.actor.BukkitCommandActor;
 
 public class UnplugCommand {
-    private static final Function<World, FakePlayerSettings> DEFAULT_FAKE_PLAYER_SETTINGS = (world) -> new UPFakePlayerSettings(
+    public static final Function<World, FakePlayerSettings> DEFAULT_FAKE_PLAYER_SETTINGS = (world) -> new UPFakePlayerSettings(
         true, // collidable
         true, // pickupItems
         false, // invulnerable
@@ -54,12 +55,13 @@ public class UnplugCommand {
 
     @Command("unplug")
     public void unplug(BukkitCommandActor actor, @Default("129600") @Range(min = 1) int durationMinutes, @Default(" ") String reason) {
-        // TODO: reason + persist fake player
+        // TODO: reason
         Player player = actor.asPlayer();
         if (player == null) {
             actor.reply("You must be a player to use this command!");
             return;
         }
+        long durationMillis = durationMinutes * 60L * 1000L;
         World world = player.getWorld();
         String name = player.getName();
         Location location = player.getLocation();
@@ -76,9 +78,9 @@ public class UnplugCommand {
         // where it is as if the player is connected but no packets are being sent.
         Bukkit.getScheduler().runTaskLater(this.plugin, _ -> {
             FakePlayerManager fpm = this.plugin.getFppComponent().getFpm();
-            FakePlayerPlusJava.getFromRepository(fpm, name).thenAccept(fakePlayer -> {
-                if (fakePlayer != null) {
-                    UUID existingUuid = fakePlayer.getUuid();
+            FakePlayerPlusJava.getFromRepository(fpm, name).thenAccept(fakePlayerInRepository -> {
+                if (fakePlayerInRepository != null) {
+                    UUID existingUuid = fakePlayerInRepository.getUuid();
                     if (!existingUuid.equals(uuid)) {
                         try {
                             FakePlayerPlusJava.deleteFromRepository(fpm, existingUuid).get();
@@ -97,9 +99,14 @@ public class UnplugCommand {
                     .foodLevel(foodLevel)
                     .fakePlayerSettings(DEFAULT_FAKE_PLAYER_SETTINGS.apply(world))
                     .enableAdvancements(true)
-                    .durationMillis(durationMinutes * 60L * 1000L)
+                    .durationMillis(durationMillis)
+                    .durationOverCallback(_ -> {
+                        this.plugin.getPlayerEntry(uuid).ifPresent(playerEntry -> playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED));
+                        this.plugin.savePlayersConfiguration();
+                    })
                     .build();
                 UnpluggedPaperApiImpl.spawnPlayerWithUuidAndSkin(name, plugin, options);
+                this.plugin.updatePlayerEntry(uuid, name, UnpluggedPlayers.UnpluggedStatus.ACTIVE, durationMillis, System.currentTimeMillis(), reason);
             });
         }, 1); // We wait 1 tick
     }

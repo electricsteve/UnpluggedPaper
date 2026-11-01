@@ -1,10 +1,18 @@
 package dev.electricsteve.unpluggedPaper;
 
+import static dev.electricsteve.unpluggedPaper.commands.UnplugCommand.DEFAULT_FAKE_PLAYER_SETTINGS;
+
 import com.coderxi.plugin.fakeplayer.api.FakePlayerPlusPluginApi;
+import com.coderxi.plugin.fakeplayer.api.manager.FakePlayerManager;
+import com.coderxi.plugin.fakeplayer.api.model.PlayerTextures;
+import com.destroystokyo.paper.profile.PlayerProfile;
+import com.destroystokyo.paper.profile.ProfileProperty;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerKickEvent;
@@ -15,16 +23,20 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import de.exlll.configlib.ConfigLib;
 import de.exlll.configlib.NameFormatters;
 import de.exlll.configlib.YamlConfigurationProperties;
 import de.exlll.configlib.YamlConfigurationStore;
 import de.exlll.configlib.YamlConfigurations;
+import dev.electricsteve.unpluggedPaper.api.PlayerSpawnOptions;
 import dev.electricsteve.unpluggedPaper.commands.UnplugCommand;
 import dev.electricsteve.unpluggedPaper.config.UnpluggedConfiguration;
 import dev.electricsteve.unpluggedPaper.config.UnpluggedPlayers;
+import dev.electricsteve.unpluggedPaper.kotlin.FakePlayerPlusJava;
 import lombok.Getter;
 import revxrsal.commands.bukkit.BukkitLamp;
 
@@ -104,7 +116,7 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(this, this);
 
         // Add back players that were unplugged when the server turned off
-        addBackUnpluggedPlayers();
+        Bukkit.getScheduler().runTaskLater(this, _ -> addBackUnpluggedPlayers(), 1); // Schedule for 1 tick later, which should only happen once the server has loaded
     }
 
     public void savePlayersConfiguration() {
@@ -112,17 +124,86 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
     }
 
     private void addBackUnpluggedPlayers() {
+        // TODO: move this async because it makes API calls and other IO
         List<UnpluggedPlayers.PlayerEntry> unpluggedPlayers = this.unpluggedPlayersConfig.getUnpluggedPlayers();
         for (UnpluggedPlayers.PlayerEntry playerEntry : unpluggedPlayers) {
+            long endTime = playerEntry.getStartTime() + playerEntry.getTime();
+            long currentTimeMillis = System.currentTimeMillis();
             if (playerEntry.getStatus() == UnpluggedPlayers.UnpluggedStatus.ACTIVE
-                && playerEntry.getStartTime() + playerEntry.getTime() > System.currentTimeMillis()) {
-                
+                && endTime > currentTimeMillis) {
+                long durationMillis = endTime - currentTimeMillis;
+
+                String name = playerEntry.getName();
+                UUID uuid = playerEntry.getUuid();
+                OfflinePlayer offlinePlayer = this.getServer().getOfflinePlayer(uuid);
+                if (offlinePlayer.isOnline() || offlinePlayer.isBanned()) {
+                    debugLog("Not spawning player {} because they were either banned or a player with this UUID is already online.", uuid);
+                    playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.TERMINATED);
+                    savePlayersConfiguration();
+                    continue;
+                }
+                Location location = offlinePlayer.getLocation();
+                if (location == null) return;
+                double health = 20.0; // TODO: fix this, currently waiting on response from paper devs (https://discord.com/channels/289587909051416579/925530366192779286/1566422373270421515)
+                int foodLevel = 20;
+
+                // Player profile textures
+                PlayerProfile playerProfile = offlinePlayer.getPlayerProfile();
+                playerProfile.complete();
+                Set<ProfileProperty> profileProperties = playerProfile.getProperties();
+                ProfileProperty textureProperty = profileProperties.stream().filter(p -> p.getName().equals("textures")).findFirst().orElse(null);
+                PlayerTextures playerTextures = textureProperty != null && textureProperty.getSignature() != null ?
+                    new PlayerTextures(textureProperty.getValue(), textureProperty.getSignature()) : null;
+
+                // TODO: merge this with the one in `UnplugCommand`
+                FakePlayerManager fpm = this.fppComponent.getFpm();
+                FakePlayerPlusJava.getFromRepository(fpm, name).thenAccept(fakePlayer -> {
+                    if (fakePlayer != null) {
+                        UUID existingUuid = fakePlayer.getUuid();
+                        if (!existingUuid.equals(uuid)) {
+                            try {
+                                FakePlayerPlusJava.deleteFromRepository(fpm, existingUuid).get();
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                    }
+                    PlayerSpawnOptions options = PlayerSpawnOptions.builder()
+                        .location(location)
+                        .uuid(uuid)
+                        .playerTextures(playerTextures)
+                        .sleepingIgnored(false)
+                        .setClientLoaded(true)
+                        .health(health)
+                        .foodLevel(foodLevel)
+                        .fakePlayerSettings(DEFAULT_FAKE_PLAYER_SETTINGS.apply(location.getWorld()))
+                        .enableAdvancements(true)
+                        .durationMillis(durationMillis)
+                        .build();
+                    UnpluggedPaperApiImpl.spawnPlayerWithUuidAndSkin(name, this, options);
+                });
             }
         }
     }
 
-    private Optional<UnpluggedPlayers.PlayerEntry> getPlayerEntry(UUID uuid) {
+    public Optional<UnpluggedPlayers.PlayerEntry> getPlayerEntry(UUID uuid) {
         return this.unpluggedPlayersConfig.getUnpluggedPlayers().stream().filter(playerEntry -> playerEntry.getUuid().equals(uuid)).findFirst();
+    }
+
+    public void updatePlayerEntry(UUID uuid, String name, UnpluggedPlayers.UnpluggedStatus status, long time, long startTime, String reason) {
+        Optional<UnpluggedPlayers.PlayerEntry> optionalPlayerEntry = getPlayerEntry(uuid);
+        if (optionalPlayerEntry.isPresent()) {
+            UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
+            playerEntry.setName(name);
+            playerEntry.setStatus(status);
+            playerEntry.setTime(time);
+            playerEntry.setStartTime(startTime);
+            playerEntry.setReason(reason);
+        } else {
+            UnpluggedPlayers.PlayerEntry playerEntry = new UnpluggedPlayers.PlayerEntry(uuid, name, status, time, startTime, reason);
+            this.unpluggedPlayersConfig.getUnpluggedPlayers().add(playerEntry);
+        }
+        savePlayersConfiguration();
     }
 
     @EventHandler
@@ -142,6 +223,7 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        // TODO: remove active unplugged players
         List<UnpluggedPlayers.PlayerEntry> unpluggedPlayers = this.unpluggedPlayersConfig.getUnpluggedPlayers();
         for (UnpluggedPlayers.PlayerEntry playerEntry : unpluggedPlayers) {
             UnpluggedPlayers.UnpluggedStatus status = playerEntry.getStatus();
@@ -149,6 +231,7 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                 playerEntry.reset();
             }
         }
+        savePlayersConfiguration();
     }
 
 }

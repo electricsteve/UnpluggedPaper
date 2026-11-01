@@ -5,6 +5,8 @@ import com.coderxi.plugin.fakeplayer.api.manager.FakePlayerManager;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 
+import java.util.concurrent.ExecutionException;
+
 import dev.electricsteve.unpluggedPaper.api.PlayerSpawnOptions;
 import dev.electricsteve.unpluggedPaper.kotlin.FakePlayerPlusJava;
 
@@ -32,13 +34,20 @@ public class UnpluggedPaperApiImpl {
             }, () -> {});
 
             if (options.getPlayerTextures() != null) {
-                FakePlayerPlusJava.setTextures(plugin, fakePlayer, options.getPlayerTextures()).thenAccept(_ -> {});
+                try {
+                    FakePlayerPlusJava.setTextures(plugin, fakePlayer, options.getPlayerTextures()).get();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
                 FakePlayerPlusJava.saveSkin(fpm, fakePlayer);
             }
 
             if (options.getDurationMillis() > 0) {
                 fakePlayer.getPlayer().getScheduler().runDelayed(plugin, _ -> {
                         fakePlayer.quit("The unplugged session has ended.");
+                        if (options.getDurationOverCallback() != null) {
+                            options.getDurationOverCallback().accept(fakePlayer);
+                        }
                     }, () -> {}, options.getDurationMillis() / 50
                 );
             }
