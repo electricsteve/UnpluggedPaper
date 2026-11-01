@@ -79,7 +79,7 @@ public class UnplugCommand {
             FakePlayerPlusJava.getFromRepository(fpm, name).thenAccept(fakePlayer -> {
                 if (fakePlayer != null) {
                     UUID existingUuid = fakePlayer.getUuid();
-                    if (existingUuid != uuid) {
+                    if (!existingUuid.equals(uuid)) {
                         try {
                             FakePlayerPlusJava.deleteFromRepository(fpm, existingUuid).get();
                         } catch (Exception e) {
