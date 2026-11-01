@@ -5,11 +5,17 @@ import com.coderxi.plugin.fakeplayer.api.FakePlayerPlusPluginApi;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bukkit.Bukkit;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 
 import de.exlll.configlib.ConfigLib;
 import de.exlll.configlib.NameFormatters;
@@ -23,7 +29,7 @@ import lombok.Getter;
 import revxrsal.commands.bukkit.BukkitLamp;
 
 @Getter
-public final class UnpluggedPaper extends JavaPlugin {
+public final class UnpluggedPaper extends JavaPlugin implements Listener {
     private static final String REQUIRED_FPP_VERSION = "2.2.50";
 
     public static Logger LOGGER = LogManager.getLogger("UnpluggedPaper");
@@ -67,7 +73,7 @@ public final class UnpluggedPaper extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        String fppVersion = Bukkit.getPluginManager().getPlugin("FakePlayerPlus").getPluginMeta().getVersion();
+        String fppVersion = Objects.requireNonNull(Bukkit.getPluginManager().getPlugin("FakePlayerPlus")).getPluginMeta().getVersion();
         if (!fppVersion.equals(REQUIRED_FPP_VERSION)) {
             getComponentLogger().error("FakePlayerPlus version " + REQUIRED_FPP_VERSION + " is required, but version {} is installed. Disabling plugin.", fppVersion);
             return;
@@ -94,6 +100,9 @@ public final class UnpluggedPaper extends JavaPlugin {
         var lamp = BukkitLamp.builder(this).build();
         lamp.register(new UnplugCommand(this));
 
+        // Register listeners
+        Bukkit.getPluginManager().registerEvents(this, this);
+
         // Add back players that were unplugged when the server turned off
         addBackUnpluggedPlayers();
     }
@@ -112,9 +121,34 @@ public final class UnpluggedPaper extends JavaPlugin {
         }
     }
 
+    private Optional<UnpluggedPlayers.PlayerEntry> getPlayerEntry(UUID uuid) {
+        return this.unpluggedPlayersConfig.getUnpluggedPlayers().stream().filter(playerEntry -> playerEntry.getUuid().equals(uuid)).findFirst();
+    }
+
+    @EventHandler
+    private void onPlayerKick(PlayerKickEvent event) {
+        UUID uuid = event.getPlayer().getUniqueId();
+        if (event.getCause().equals(PlayerKickEvent.Cause.DUPLICATE_LOGIN) && this.fppComponent.getFpm().isFake(uuid, false)) {
+            // A fake player is kicked because a real player with the same UUID logged in
+            Optional<UnpluggedPlayers.PlayerEntry> optionalPlayerEntry = getPlayerEntry(uuid);
+            if (optionalPlayerEntry.isPresent()) {
+                UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
+                if (!playerEntry.getStatus().equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE)) return;
+                playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.INTERRUPTED);
+                savePlayersConfiguration();
+            }
+        }
+    }
+
     @Override
     public void onDisable() {
-        // Plugin shutdown logic
+        List<UnpluggedPlayers.PlayerEntry> unpluggedPlayers = this.unpluggedPlayersConfig.getUnpluggedPlayers();
+        for (UnpluggedPlayers.PlayerEntry playerEntry : unpluggedPlayers) {
+            UnpluggedPlayers.UnpluggedStatus status = playerEntry.getStatus();
+            if (!status.equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE) && !status.equals(UnpluggedPlayers.UnpluggedStatus.INACTIVE)) {
+                playerEntry.reset();
+            }
+        }
     }
 
 }
