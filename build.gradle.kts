@@ -63,5 +63,7 @@ tasks {
 
     shadowJar {
         archiveClassifier.set("")
+        exclude("kotlin/**", "org/intellij/**", "org/jetbrains/**")
+        exclude("META-INF/kotlin-stdlib*", "META-INF/maven/**")
     }
 }
