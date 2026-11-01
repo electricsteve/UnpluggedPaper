@@ -16,9 +16,9 @@ repositories {
 dependencies {
     paperweight.paperDevBundle(libs.versions.paper.api.get())
     compileOnly(libs.fake.player.plus) // MavenLocal for now
-    implementation(libs.lamp.common)
-    implementation(libs.lamp.bukkit)
-    implementation(libs.kotlinx.coroutines.core)
+    compileOnly(libs.lamp.common) // These 3 are already included with fpp
+    compileOnly(libs.lamp.bukkit)
+    compileOnly(libs.kotlinx.coroutines.core)
     implementation(libs.configlib)
 }
 
