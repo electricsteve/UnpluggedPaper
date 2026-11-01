@@ -124,6 +124,7 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
     }
 
     private void addBackUnpluggedPlayers() {
+        long methodStartTime = System.nanoTime();
         // TODO: move this async because it makes API calls and other IO
         List<UnpluggedPlayers.PlayerEntry> unpluggedPlayers = this.unpluggedPlayersConfig.getUnpluggedPlayers();
         for (UnpluggedPlayers.PlayerEntry playerEntry : unpluggedPlayers) {
@@ -184,6 +185,8 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                 });
             }
         }
+        long methodDuration = System.nanoTime() - methodStartTime;
+        debugLog("Adding back unplugged players took {}ns ({}μs or {}ms)", methodDuration, methodDuration / 10e3, methodDuration / 10e6);
     }
 
     public Optional<UnpluggedPlayers.PlayerEntry> getPlayerEntry(UUID uuid) {
