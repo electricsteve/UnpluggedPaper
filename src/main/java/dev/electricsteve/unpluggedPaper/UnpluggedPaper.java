@@ -8,6 +8,10 @@ import com.coderxi.plugin.fakeplayer.api.model.PlayerTextures;
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.ProfileProperty;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
+import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bukkit.Bukkit;
@@ -26,6 +30,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -134,16 +139,23 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         for (UnpluggedPlayers.PlayerEntry playerEntry : unpluggedPlayers) {
             long endTime = playerEntry.getStartTime() + playerEntry.getTime();
             long currentTimeMillis = System.currentTimeMillis();
-            if (playerEntry.getStatus() == UnpluggedPlayers.UnpluggedStatus.ACTIVE
-                && endTime > currentTimeMillis) {
-                long durationMillis = endTime - currentTimeMillis;
-
+            if (playerEntry.getStatus() == UnpluggedPlayers.UnpluggedStatus.ACTIVE) {
                 String name = playerEntry.getName();
                 UUID uuid = playerEntry.getUuid();
+                if (endTime <= currentTimeMillis) {
+                    playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED);
+                    this.broadcastPlugBack(Component.text(name), " AFK session expired", playerEntry.getTime());
+                    this.savePlayersConfiguration();
+                    return;
+                }
+                long durationLeftMillis = endTime - currentTimeMillis;
+                long durationHadMillis = currentTimeMillis - playerEntry.getStartTime();
+
                 OfflinePlayer offlinePlayer = this.getServer().getOfflinePlayer(uuid);
                 if (offlinePlayer.isOnline() || offlinePlayer.isBanned()) {
                     debugLog("Not spawning player {} because they were either banned or a player with this UUID is already online.", uuid);
                     playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.TERMINATED);
+                    broadcastPlugBack(Component.text(playerEntry.getName()), " AFK session terminated", durationHadMillis);
                     savePlayersConfiguration();
                     continue;
                 }
@@ -183,9 +195,10 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                         .foodLevel(foodLevel)
                         .fakePlayerSettings(DEFAULT_FAKE_PLAYER_SETTINGS.apply(location.getWorld()))
                         .enableAdvancements(true)
-                        .durationMillis(durationMillis)
+                        .durationMillis(durationLeftMillis)
                         .durationOverCallback(_ -> {
                             this.getPlayerEntry(uuid).ifPresent(entry -> entry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED));
+                            this.broadcastPlugBack(Component.text(name), " AFK session expired", System.currentTimeMillis() - playerEntry.getStartTime());
                             this.savePlayersConfiguration();
                         })
                         .hidePlayer(this.configuration.getUnplugged().unpluggedHidePlayer())
@@ -233,6 +246,7 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                 UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
                 if (!playerEntry.getStatus().equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE)) return;
                 playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.INTERRUPTED);
+                broadcastPlugBack(event.getPlayer().displayName(), " has returned", System.currentTimeMillis() - playerEntry.getStartTime());
                 savePlayersConfiguration();
             }
         }
@@ -242,15 +256,18 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
     private void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
-        if (isFakePlayer(uuid) && this.getConfiguration().getUnplugged().resetHealthUponDeath()) {
-            AttributeInstance attribute = player.getAttribute(Attribute.MAX_HEALTH);
-            player.setHealth(attribute != null ? attribute.getValue() : 20);
-            event.setCancelled(true);
+        if (isFakePlayer(uuid)) {
             Optional<UnpluggedPlayers.PlayerEntry> optionalPlayerEntry = getPlayerEntry(uuid);
             if (optionalPlayerEntry.isPresent()) {
                 UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
                 if (!playerEntry.getStatus().equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE)) return;
+                if (this.getConfiguration().getUnplugged().resetHealthUponDeath()) {
+                    AttributeInstance attribute = player.getAttribute(Attribute.MAX_HEALTH);
+                    player.setHealth(attribute != null ? attribute.getValue() : 20);
+                    event.setCancelled(true);
+                }
                 playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.TERMINATED);
+                broadcastPlugBack(player.displayName(), " AFK session terminated", System.currentTimeMillis() - playerEntry.getStartTime());
                 savePlayersConfiguration();
             }
         }
@@ -271,19 +288,37 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         if (!isFakePlayer(player.getUniqueId()) && this.getConfiguration().getUnplugged().unpluggedHidePlayer() && (this.getConfiguration().getUnplugged().unpluggedHideFromOps() || !player.isOp())) this.getServer().getOnlinePlayers().stream()
             .filter(otherPlayer -> isFakePlayer(otherPlayer.getUniqueId()))
             .forEach(fakePlayer -> player.hidePlayer(this, fakePlayer));
+        Optional<UnpluggedPlayers.PlayerEntry> optionalPlayerEntry = getPlayerEntry(player.getUniqueId());
+        if (optionalPlayerEntry.isPresent() && !isFakePlayer(player.getUniqueId())) {
+            UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
+            UnpluggedPlayers.UnpluggedStatus status = playerEntry.getStatus();
+            if (status.equals(UnpluggedPlayers.UnpluggedStatus.INACTIVE)) return;
+            if (status.equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE)) {
+                getComponentLogger().error("Illegal state: on real player join, it's Unplugged entry was ACTIVE");
+                return;
+            }
+            playerEntry.reset();
+        }
     }
 
     @Override
     public void onDisable() {
-        // TODO: remove active unplugged players
-        List<UnpluggedPlayers.PlayerEntry> unpluggedPlayers = this.unpluggedPlayersConfig.getUnpluggedPlayers();
-        for (UnpluggedPlayers.PlayerEntry playerEntry : unpluggedPlayers) {
-            UnpluggedPlayers.UnpluggedStatus status = playerEntry.getStatus();
-            if (!status.equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE) && !status.equals(UnpluggedPlayers.UnpluggedStatus.INACTIVE)) {
-                playerEntry.reset(); // TODO: move this to real player join
-            }
-        }
+        // Just to be sure
         savePlayersConfiguration();
     }
 
+    public void broadcastPlugBack(Component playerComponent, String reasonString, long durationMillis) {
+        Component c = playerComponent.append(Component.text(reasonString, NamedTextColor.YELLOW));
+        @SuppressWarnings("SpellCheckingInspection") // Don't spell check format string
+        String durationString = DurationFormatUtils.formatDuration(durationMillis, "[d'd'H'h'm'm's's']", true);
+        if (configuration.getMessages().displayDuration()) c =
+            c.append(Component.text(" (Gone for: ", NamedTextColor.YELLOW))
+                .append(Component.text(durationString)).append(Component.text(")", NamedTextColor.YELLOW));
+        broadcast(c);
+    }
+
+    public void broadcast(Component component) {
+        if (!configuration.getMessages().broadcastMessages()) return;
+        this.getServer().broadcast(component);
+    }
 }

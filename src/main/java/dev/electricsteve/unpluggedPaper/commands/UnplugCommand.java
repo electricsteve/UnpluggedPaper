@@ -6,6 +6,7 @@ import com.coderxi.plugin.fakeplayer.api.model.PlayerTextures;
 import com.destroystokyo.paper.profile.ProfileProperty;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 
 import org.bukkit.Bukkit;
 import org.bukkit.GameRules;
@@ -16,6 +17,8 @@ import org.bukkit.entity.Player;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+
+import javax.naming.Name;
 
 import dev.electricsteve.unpluggedPaper.UnpluggedPaper;
 import dev.electricsteve.unpluggedPaper.UnpluggedPaperApiImpl;
@@ -66,6 +69,7 @@ public class UnplugCommand {
         String name = player.getName();
         Location location = player.getLocation();
         UUID uuid = player.getUniqueId();
+        Component displayName = player.displayName();
         Set<ProfileProperty> profileProperties = player.getPlayerProfile().getProperties();
         ProfileProperty textureProperty = profileProperties.stream().filter(p -> p.getName().equals("textures")).findFirst().orElse(null);
         PlayerTextures playerTextures = textureProperty != null && textureProperty.getSignature() != null ?
@@ -89,6 +93,7 @@ public class UnplugCommand {
                         }
                     }
                 }
+                long startTime = System.currentTimeMillis();
                 PlayerSpawnOptions options = PlayerSpawnOptions.builder()
                     .location(location)
                     .uuid(uuid)
@@ -102,13 +107,18 @@ public class UnplugCommand {
                     .durationMillis(durationMillis)
                     .durationOverCallback(_ -> {
                         this.plugin.getPlayerEntry(uuid).ifPresent(playerEntry -> playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED));
+                        this.plugin.broadcastPlugBack(displayName, " AFK session expired", System.currentTimeMillis() - startTime);
                         this.plugin.savePlayersConfiguration();
                     })
                     .hidePlayer(this.plugin.getConfiguration().getUnplugged().unpluggedHidePlayer())
                     .hidePlayerOps(this.plugin.getConfiguration().getUnplugged().unpluggedHideFromOps())
                     .build();
                 UnpluggedPaperApiImpl.spawnPlayerWithUuidAndSkin(name, plugin, options);
-                this.plugin.updatePlayerEntry(uuid, name, UnpluggedPlayers.UnpluggedStatus.ACTIVE, durationMillis, System.currentTimeMillis(), reason);
+                this.plugin.updatePlayerEntry(uuid, name, UnpluggedPlayers.UnpluggedStatus.ACTIVE, durationMillis, startTime, reason);
+
+                Component broadcast = displayName.append(Component.text(" has been unplugged", NamedTextColor.YELLOW));
+                if (reason != null && !reason.isEmpty()) broadcast = broadcast.append(Component.text(", ", NamedTextColor.YELLOW)).append(Component.text(reason));
+                this.plugin.broadcast(broadcast);
             });
         }, 1); // We wait 1 tick
     }

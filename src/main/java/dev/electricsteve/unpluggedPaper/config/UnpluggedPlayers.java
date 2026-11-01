@@ -23,7 +23,7 @@ public class UnpluggedPlayers {
         private String name;
         private UnpluggedStatus status;
         private long time;
-        private long startTime; // TODO: time lasted (how long it was online for)
+        private long startTime;
         private String reason;
 
         // Have to have a no-args constructor for configlib to not error
