@@ -5,7 +5,7 @@ import com.coderxi.plugin.fakeplayer.api.manager.FakePlayerManager;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import dev.electricsteve.unpluggedPaper.api.PlayerSpawnOptions;
 import dev.electricsteve.unpluggedPaper.kotlin.FakePlayerPlusJava;
@@ -43,13 +43,12 @@ public class UnpluggedPaperApiImpl {
             }
 
             if (options.getDurationMillis() > 0) {
-                fakePlayer.getPlayer().getScheduler().runDelayed(plugin, _ -> {
-                        fakePlayer.quit("The unplugged session has ended.");
-                        if (options.getDurationOverCallback() != null) {
-                            options.getDurationOverCallback().accept(fakePlayer);
-                        }
-                    }, () -> {}, options.getDurationMillis() / 50
-                );
+                Bukkit.getAsyncScheduler().runDelayed(plugin, _ -> fakePlayer.getPlayer().getScheduler().run(plugin, _ -> {
+                    fakePlayer.quit("The unplugged session has ended.");
+                    if (options.getDurationOverCallback() != null) {
+                        options.getDurationOverCallback().accept(fakePlayer);
+                    }
+                }, () -> {}), options.getDurationMillis(), TimeUnit.MILLISECONDS);
             }
         });
     }

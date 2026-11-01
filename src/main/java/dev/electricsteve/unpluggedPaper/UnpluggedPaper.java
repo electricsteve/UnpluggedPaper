@@ -25,7 +25,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 import de.exlll.configlib.ConfigLib;
 import de.exlll.configlib.NameFormatters;
