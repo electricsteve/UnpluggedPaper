@@ -5,7 +5,6 @@ import com.coderxi.plugin.fakeplayer.api.manager.FakePlayerManager;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.permissions.ServerOperator;
 
 import java.util.concurrent.TimeUnit;
 

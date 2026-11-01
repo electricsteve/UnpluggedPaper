@@ -8,6 +8,7 @@ import com.destroystokyo.paper.profile.ProfileProperty;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
+import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.GameRules;
 import org.bukkit.Location;
@@ -17,8 +18,6 @@ import org.bukkit.entity.Player;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
-
-import javax.naming.Name;
 
 import dev.electricsteve.unpluggedPaper.UnpluggedPaper;
 import dev.electricsteve.unpluggedPaper.UnpluggedPaperApiImpl;
@@ -77,7 +76,8 @@ public class UnplugCommand {
         double health = player.getHealth();
         int foodLevel = player.getFoodLevel();
 
-        player.kick(Component.text("You are now afk!"));
+        player.kick(Component.text("Your player will be AFK for: ", NamedTextColor.GOLD)
+            .append(Component.text(DurationFormatUtils.formatDuration(durationMillis, "[d' days 'H' hours 'm' minutes 's' seconds']", true), NamedTextColor.GREEN)));
         // We have to delay this, because there seems some kind of race condition where the fake player is in a "ghost" state,
         // where it is as if the player is connected but no packets are being sent.
         Bukkit.getScheduler().runTaskLater(this.plugin, _ -> {
@@ -107,7 +107,7 @@ public class UnplugCommand {
                     .durationMillis(durationMillis)
                     .durationOverCallback(_ -> {
                         this.plugin.getPlayerEntry(uuid).ifPresent(playerEntry -> playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED));
-                        this.plugin.broadcastPlugBack(displayName, " AFK session expired", System.currentTimeMillis() - startTime);
+                        this.plugin.broadcastPlugBack(displayName.color(NamedTextColor.YELLOW), " AFK session expired", System.currentTimeMillis() - startTime);
                         this.plugin.savePlayersConfiguration();
                     })
                     .hidePlayer(this.plugin.getConfiguration().getUnplugged().unpluggedHidePlayer())
@@ -116,7 +116,7 @@ public class UnplugCommand {
                 UnpluggedPaperApiImpl.spawnPlayerWithUuidAndSkin(name, plugin, options);
                 this.plugin.updatePlayerEntry(uuid, name, UnpluggedPlayers.UnpluggedStatus.ACTIVE, durationMillis, startTime, reason);
 
-                Component broadcast = displayName.append(Component.text(" has been unplugged", NamedTextColor.YELLOW));
+                Component broadcast = displayName.color(NamedTextColor.YELLOW).append(Component.text(" has been unplugged", NamedTextColor.YELLOW));
                 if (reason != null && !reason.isEmpty()) broadcast = broadcast.append(Component.text(", ", NamedTextColor.YELLOW)).append(Component.text(reason));
                 this.plugin.broadcast(broadcast);
             });

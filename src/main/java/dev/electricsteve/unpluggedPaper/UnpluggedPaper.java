@@ -30,7 +30,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -308,17 +307,17 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
     }
 
     public void broadcastPlugBack(Component playerComponent, String reasonString, long durationMillis) {
-        Component c = playerComponent.append(Component.text(reasonString, NamedTextColor.YELLOW));
+        Component c = playerComponent.color(NamedTextColor.YELLOW).append(Component.text(reasonString, NamedTextColor.YELLOW));
         @SuppressWarnings("SpellCheckingInspection") // Don't spell check format string
         String durationString = DurationFormatUtils.formatDuration(durationMillis, "[d'd'H'h'm'm's's']", true);
         if (configuration.getMessages().displayDuration()) c =
-            c.append(Component.text(" (Gone for: ", NamedTextColor.YELLOW))
-                .append(Component.text(durationString)).append(Component.text(")", NamedTextColor.YELLOW));
+            c.append(Component.text(" (Gone for: ", NamedTextColor.GRAY))
+                .append(Component.text(durationString, NamedTextColor.GREEN)).append(Component.text(")", NamedTextColor.GRAY));
         broadcast(c);
     }
 
     public void broadcast(Component component) {
-        if (!configuration.getMessages().broadcastMessages()) return;
+        if (!configuration.getMessages().broadcastMessages() || configuration.getUnplugged().unpluggedHidePlayer()) return;
         this.getServer().broadcast(component);
     }
 }
