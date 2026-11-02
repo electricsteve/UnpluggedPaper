@@ -7,14 +7,38 @@ This is an unofficial paper version of [Unplugged AFK](https://modrinth.com/mod/
 ## Features
 
 Currently, the plugin has the following features:
-- `/testing unplug`
-  - Unplugs you, no extra options for now
-  - Will replace this with a nicer command later
+- `/unplug <duration in minutes> <reason>`
+  - Unplugs you, with the specified duration and reason if specified
 - When you unplug, you get kicked from the server
 - A fake player (powered by [FakePlayerPlus](https://github.com/xiplugin/FakePlayerPlus/)) joins
   - It has your name, UUID and other player data
   - It behaves as if you were connected to the server, but AFK and emulated by the server
   - If it gets killed, it automatically leaves
+- A lot of Unplugged-afk's configuration options in `plugins/UnpluggedPaper/config.yml`
+  - Not all are implemented yet, ones that aren't are prefixed in the comment by `[DOES NOTHING ATM]`
+
+## Differences with Unplugged AFK
+
+> I will be referring to Unplugged AFK as "UA", and Unplugged Paper as "UP"
+
+This project aims to have full feature compatibility with UA, as in, what you can do with UA, can be done with this plugin.
+For example, if you have a datapack that uses UA commands, it *SHOULD* work with UP (as long as they use `/unplug` and not `/afk`).
+But due to fundamental platform differences, the behaviour may not be 100% the same.
+The biggest difference you may notice is the config. For UP, we use YAML, instead of JSON.
+Some config options are missing from UP, mainly the permission levels options, because on Paper we use permissions for that.
+
+Full feature difference list:
+- YAML instead of JSON for config
+- Config options removed:
+  - `unplugCommandPermissions`
+  - `unpluggedAdminCommandPermissions`
+  - `afkCommandPermissions`
+  - `enableUnplugCommand`
+  - `enableAfkCommand`
+- No `/afk` command, I recommend you use another plugin that allows you to create command aliases if you want this command back.
+- All times are relative to IRL time, not minecraft ticks (it seems unplugged-afk kinda relies on ticks, not quite sure)
+- Not all configs implemented yet
+- No `/unplugged-admin` command yet
 
 ## Install
 
@@ -34,10 +58,10 @@ If you'd like to build the plugin yourself, you will also need to build FakePlay
 Step-by-step tutorial: (replace `./gradlew` with `gradlew.bat` on windows)
 1. `git clone https://github.com/electricsteve/FakePlayerPlus/`
 2. `cd FakePlayerPlus` to go to the cloned project
-3. `APP_VERSION=2.2.50 ./gradlew build publishToMavenLocal` to build and publish the artifact to the local maven repository
+3. `APP_VERSION=2.2.51 ./gradlew build publishToMavenLocal` to build and publish the artifact to the local maven repository
 4. `cd ..` to go back
 5. `git clone https://github.com/electricsteve/UnpluggedPaper`
 6. `cd UnpluggedPaper`
 7. `./gradlew build`
 
-Then you take the jars from `FakePlayerPlus/build/libs/FakePlayerPlus-2.2.50.jar` and `UnpluggedPaper/build/libs/UnpluggedPaper-0.1.0.jar`
+Then you take the jars from `FakePlayerPlus/build/libs/FakePlayerPlus-2.2.51.jar` and `UnpluggedPaper/build/libs/UnpluggedPaper-0.1.0.jar`

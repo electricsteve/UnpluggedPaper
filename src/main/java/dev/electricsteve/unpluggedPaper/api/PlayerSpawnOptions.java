@@ -1,5 +1,6 @@
 package dev.electricsteve.unpluggedPaper.api;
 
+import com.coderxi.plugin.fakeplayer.api.entity.FakePlayer;
 import com.coderxi.plugin.fakeplayer.api.entity.FakePlayerSettings;
 import com.coderxi.plugin.fakeplayer.api.model.PlayerTextures;
 
@@ -7,6 +8,7 @@ import org.bukkit.Location;
 import org.jspecify.annotations.Nullable;
 
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -54,4 +56,13 @@ public class PlayerSpawnOptions {
     /// The duration in milliseconds to keep the player spawned for.
     @Builder.Default
     private long durationMillis = -1;
+    /// The callback to run when the fake player is kicked because the `durationMillis` has been hit.
+    @Nullable
+    private Consumer<FakePlayer> durationOverCallback;
+    /// Whether to hide the fake player from other players (operators will still see the fake player)
+    @Builder.Default
+    private boolean hidePlayer = false;
+    /// Also hide fake player from operators (only works if hidePlayer is also true)
+    @Builder.Default
+    private boolean hidePlayerOps = false;
 }

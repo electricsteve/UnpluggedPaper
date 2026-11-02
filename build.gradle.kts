@@ -4,19 +4,22 @@ plugins {
     alias(libs.plugins.paperweight.userdev)
     alias(libs.plugins.run.paper)
     alias(libs.plugins.lombok)
+    alias(libs.plugins.shadow)
 }
 
 repositories {
     mavenCentral()
     mavenLocal() // This is currently used for FakePlayerPlus
+    maven { url = uri("https://jitpack.io") }
 }
 
 dependencies {
     paperweight.paperDevBundle(libs.versions.paper.api.get())
     compileOnly(libs.fake.player.plus) // MavenLocal for now
-    implementation(libs.lamp.common)
-    implementation(libs.lamp.bukkit)
-    implementation(libs.kotlinx.coroutines.core)
+    compileOnly(libs.lamp.common) // These 3 are already included with fpp
+    compileOnly(libs.lamp.bukkit)
+    compileOnly(libs.kotlinx.coroutines.core)
+    implementation(libs.configlib)
 }
 
 java {
@@ -34,7 +37,7 @@ configure<org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension> {
 tasks {
     runServer {
         minecraftVersion(libs.versions.minecraft.get())
-        jvmArgs("-Xms2G", "-Xmx2G", "-Dcom.mojang.eula.agree=true", "-Ddisable.watchdog=true")
+        jvmArgs("-Xms2G", "-Xmx2G", "-Dcom.mojang.eula.agree=true", "-Ddisable.watchdog=true", "-Dunplugged.debug=true")
         downloadPlugins {
 //            github("xiplugin", "FakePlayerPlus", "v2.2.1", "FakePlayerPlus-2.2.1.jar")
             // We are using a locally built dev version, so you'll have to place it in the plugin folder yourself
@@ -52,5 +55,15 @@ tasks {
     withType<JavaCompile> {
         // Preserve parameter names in the bytecode
         options.compilerArgs.add("-parameters")
+    }
+
+    jar {
+        archiveClassifier.set("slim")
+    }
+
+    shadowJar {
+        archiveClassifier.set("")
+        exclude("kotlin/**", "org/intellij/**", "org/jetbrains/**")
+        exclude("META-INF/kotlin-stdlib*", "META-INF/maven/**")
     }
 }
