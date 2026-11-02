@@ -129,6 +129,14 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         Bukkit.getScheduler().runTaskLater(this, _ -> Bukkit.getAsyncScheduler().runNow(this, _ -> addBackUnpluggedPlayers()), 1); // Schedule for 1 tick later (and run async immediately), which should only happen once the server has loaded
     }
 
+    public void reloadConfiguration() {
+        this.configuration = YamlConfigurations.update(
+            configFile,
+            UnpluggedConfiguration.class,
+            configurationProperties
+        );
+    }
+
     public void savePlayersConfiguration() {
         playersConfigurationStore.save(this.unpluggedPlayersConfig, playersFile);
     }
