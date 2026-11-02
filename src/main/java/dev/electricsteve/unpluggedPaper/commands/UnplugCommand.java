@@ -76,6 +76,9 @@ public class UnplugCommand {
         double health = player.getHealth();
         int foodLevel = player.getFoodLevel();
 
+        // We do it here, because the kick event listener needs it to detect if a player was kicked for unplugging
+        long startTime = System.currentTimeMillis();
+        this.plugin.updatePlayerEntry(uuid, name, UnpluggedPlayers.UnpluggedStatus.ACTIVE, durationMillis, startTime, reason);
         player.kick(Component.text("Your player will be AFK for: ", NamedTextColor.GOLD)
             .append(Component.text(DurationFormatUtils.formatDuration(durationMillis, "[d' days 'H' hours 'm' minutes 's' seconds']", true), NamedTextColor.GREEN)));
         // We have to delay this, because there seems some kind of race condition where the fake player is in a "ghost" state,
@@ -93,7 +96,6 @@ public class UnplugCommand {
                         }
                     }
                 }
-                long startTime = System.currentTimeMillis();
                 PlayerSpawnOptions options = PlayerSpawnOptions.builder()
                     .location(location)
                     .uuid(uuid)
@@ -114,7 +116,6 @@ public class UnplugCommand {
                     .hidePlayerOps(this.plugin.getConfiguration().getUnplugged().unpluggedHideFromOps())
                     .build();
                 UnpluggedPaperApiImpl.spawnPlayerWithUuidAndSkin(name, plugin, options);
-                this.plugin.updatePlayerEntry(uuid, name, UnpluggedPlayers.UnpluggedStatus.ACTIVE, durationMillis, startTime, reason);
 
                 Component broadcast = displayName.color(NamedTextColor.YELLOW).append(Component.text(" has been unplugged", NamedTextColor.YELLOW));
                 if (reason != null && !reason.isEmpty()) broadcast = broadcast.append(Component.text(", ", NamedTextColor.YELLOW)).append(Component.text(reason));

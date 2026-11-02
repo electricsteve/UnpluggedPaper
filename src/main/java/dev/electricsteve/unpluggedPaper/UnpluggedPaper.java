@@ -26,6 +26,7 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -232,7 +233,7 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
     }
 
     private boolean isFakePlayer(UUID uuid) {
-        return this.fppComponent.getFpm().isFake(uuid, false);
+        return this.fppComponent.getFpm().isFake(uuid, false); // TODO: replace this with something better (probably requires FPP changes)
     }
 
     @EventHandler
@@ -244,9 +245,25 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
             if (optionalPlayerEntry.isPresent()) {
                 UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
                 if (!playerEntry.getStatus().equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE)) return;
-                playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.INTERRUPTED);
+                playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.RETURNED);
                 broadcastPlugBack(event.getPlayer().displayName(), " has returned", System.currentTimeMillis() - playerEntry.getStartTime());
                 savePlayersConfiguration();
+                if (configuration.getMessages().hideUnpluggedJoin()) event.leaveMessage(null);
+            }
+        }
+    }
+
+    // Have todo do this because `PlayerKickEvent.leaveMessage`'s doc "If null, no message will be sent" is false
+    @EventHandler
+    private void onPlayerQuit(PlayerQuitEvent event) {
+        UUID uuid = event.getPlayer().getUniqueId();
+        if (!isFakePlayer(uuid)) {
+            Optional<UnpluggedPlayers.PlayerEntry> optionalPlayerEntry = getPlayerEntry(uuid);
+            if (optionalPlayerEntry.isPresent()) {
+                UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
+                if (!playerEntry.getStatus().equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE)) return;
+                // Player just got kicked because they unplugged
+                if (configuration.getMessages().hideUnpluggedJoin()) event.quitMessage(null);
             }
         }
     }
@@ -284,17 +301,24 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
     private void onPlayerJoin(PlayerJoinEvent event) {
         // TODO: this shouldn't be here, move this to something proper when doing the api
         Player player = event.getPlayer();
-        if (!isFakePlayer(player.getUniqueId()) && this.getConfiguration().getUnplugged().unpluggedHidePlayer() && (this.getConfiguration().getUnplugged().unpluggedHideFromOps() || !player.isOp())) this.getServer().getOnlinePlayers().stream()
+        UUID uuid = player.getUniqueId();
+        if (isFakePlayer(uuid)) {
+            if (configuration.getMessages().hideUnpluggedJoin()) event.joinMessage(null);
+        }
+        if (!isFakePlayer(uuid) && this.getConfiguration().getUnplugged().unpluggedHidePlayer() && (this.getConfiguration().getUnplugged().unpluggedHideFromOps() || !player.isOp())) this.getServer().getOnlinePlayers().stream()
             .filter(otherPlayer -> isFakePlayer(otherPlayer.getUniqueId()))
             .forEach(fakePlayer -> player.hidePlayer(this, fakePlayer));
-        Optional<UnpluggedPlayers.PlayerEntry> optionalPlayerEntry = getPlayerEntry(player.getUniqueId());
-        if (optionalPlayerEntry.isPresent() && !isFakePlayer(player.getUniqueId())) {
+        Optional<UnpluggedPlayers.PlayerEntry> optionalPlayerEntry = getPlayerEntry(uuid);
+        if (optionalPlayerEntry.isPresent() && !isFakePlayer(uuid)) {
             UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
             UnpluggedPlayers.UnpluggedStatus status = playerEntry.getStatus();
             if (status.equals(UnpluggedPlayers.UnpluggedStatus.INACTIVE)) return;
             if (status.equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE)) {
                 getComponentLogger().error("Illegal state: on real player join, it's Unplugged entry was ACTIVE");
                 return;
+            }
+            if (status.equals(UnpluggedPlayers.UnpluggedStatus.RETURNED) && configuration.getMessages().hideUnpluggedJoin()) {
+                event.joinMessage(null);
             }
             playerEntry.reset();
         }

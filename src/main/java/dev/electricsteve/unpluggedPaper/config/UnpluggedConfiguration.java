@@ -59,7 +59,7 @@ public class UnpluggedConfiguration {
     public record Messages(
         @Comment("Enables the broadcasting of Unplugged status messages.")
         boolean broadcastMessages,
-        @Comment("[DOES NOTHING ATM] Enables the disabling of the default `player has joined` messages while bots are spawned, where possible.")
+        @Comment("Enables the disabling of the default `player has joined` messages while bots are spawned, where possible. (also leave messages)")
         boolean hideUnpluggedJoin,
         @Comment("Enables the duration display of Unplugged status messages.")
         boolean displayDuration,

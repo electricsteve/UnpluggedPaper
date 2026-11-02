@@ -47,8 +47,10 @@ public class UnpluggedPlayers {
         INACTIVE,
         /// When the session has reached its end time
         EXPIRED,
-        /// When stopped by admin or the real player joined
+        /// When stopped by admin
         INTERRUPTED,
+        /// When the real player joined
+        RETURNED,
         /// When the player couldn't be spawned from config (banned or duplicate UUID) or it was killed
         TERMINATED,
     }
