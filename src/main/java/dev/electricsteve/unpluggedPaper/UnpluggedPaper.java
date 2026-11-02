@@ -52,7 +52,7 @@ import revxrsal.commands.bukkit.BukkitLamp;
 
 @Getter
 public final class UnpluggedPaper extends JavaPlugin implements Listener {
-    private static final String REQUIRED_FPP_VERSION = "2.2.50";
+    private static final String REQUIRED_FPP_VERSION = "2.2.51";
 
     public static Logger LOGGER = LogManager.getLogger("UnpluggedPaper");
     private static boolean debug = Boolean.getBoolean("unplugged.debug"); // Set by command-line argument
@@ -233,7 +233,7 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
     }
 
     private boolean isFakePlayer(UUID uuid) {
-        return this.fppComponent.getFpm().isFake(uuid, false); // TODO: replace this with something better (probably requires FPP changes)
+        return this.fppComponent.getFpm().isFake(uuid, false, true);
     }
 
     @EventHandler
