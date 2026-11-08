@@ -12,10 +12,12 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Instant;
+import java.util.Optional;
 
 import dev.electricsteve.unpluggedPaper.UnpluggedPaper;
 import dev.electricsteve.unpluggedPaper.config.UnpluggedPlayers;
 import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Default;
 import revxrsal.commands.annotation.Subcommand;
 import revxrsal.commands.bukkit.actor.BukkitCommandActor;
 
@@ -72,8 +74,13 @@ public class AdminCommand {
     }
 
     @Subcommand("info")
-    public void info(BukkitCommandActor actor) {
-
+    public void info(BukkitCommandActor actor, @Default("me") OfflinePlayer target) {
+        Optional<UnpluggedPlayers.PlayerEntry> optionalPlayerEntry = plugin.getPlayerEntry(target.getUniqueId());
+        if (optionalPlayerEntry.isEmpty()) {
+            actor.reply(Component.text("Error: player not in player map", NamedTextColor.RED));
+            return;
+        }
+        actor.reply(Component.text("\n").append(getPlayerDebugText(optionalPlayerEntry.get(), -1, target)));
     }
 
     @Subcommand("spawn")
