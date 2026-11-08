@@ -42,16 +42,23 @@ public class UnpluggedPlayers {
 
     public enum UnpluggedStatus {
         /// When a session is active
-        ACTIVE,
+        ACTIVE("Active"),
         /// When no session is active (appears after a server stop with one of the other non-active versions)
-        INACTIVE,
+        INACTIVE("Inactive"),
         /// When the session has reached its end time
-        EXPIRED,
+        EXPIRED("Expired"),
         /// When stopped by admin
-        INTERRUPTED,
+        INTERRUPTED("Interrupted"),
         /// When the real player joined
-        RETURNED,
+        RETURNED("Returned"),
         /// When the player couldn't be spawned from config (banned or duplicate UUID) or it was killed
-        TERMINATED,
+        TERMINATED("Terminated");
+
+        @Getter
+        private final String name;
+
+        UnpluggedStatus(String name) {
+            this.name = name;
+        }
     }
 }
