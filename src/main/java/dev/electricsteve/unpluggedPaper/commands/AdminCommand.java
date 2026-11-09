@@ -12,6 +12,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import dev.electricsteve.unpluggedPaper.UnpluggedPaper;
@@ -37,7 +38,26 @@ public class AdminCommand {
 
     @Subcommand("purge")
     public void purge(BukkitCommandActor actor) {
-        // Remove fake players (INTERRUPTED), reload the config, load all players from config again (as if adding players at server start)
+        // TODO: create player entry on join
+        // Remove all players from the data file and resyncs from online players
+        List<UnpluggedPlayers.PlayerEntry> activeFakePlayers = new java.util.ArrayList<>();
+        int i = 0;
+        for (UnpluggedPlayers.PlayerEntry entry : plugin.getUnpluggedPlayersConfig().emptyList()) {
+            i++;
+            if (entry.getStatus() == UnpluggedPlayers.UnpluggedStatus.ACTIVE
+            && plugin.getServer().getPlayer(entry.getUuid()) != null) activeFakePlayers.add(entry);
+        }
+        for (UnpluggedPlayers.PlayerEntry entry : activeFakePlayers) {
+            plugin.getUnpluggedPlayersConfig().getUnpluggedPlayers().add(entry);
+        }
+        int shadows = activeFakePlayers.size();
+        actor.reply(Component.text("Purged: ", NamedTextColor.YELLOW)
+            .append(Component.text(i, NamedTextColor.RED))
+            .append(Component.text(" players, and then resynced ", NamedTextColor.YELLOW))
+            .append(Component.text(shadows, NamedTextColor.GREEN))
+            .append(Component.text(" current players, with ", NamedTextColor.YELLOW))
+            .append(Component.text(shadows, NamedTextColor.GOLD))
+            .append(Component.text(" shadows", NamedTextColor.YELLOW)));
     }
 
     @Subcommand("list")

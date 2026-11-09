@@ -1,5 +1,6 @@
 package dev.electricsteve.unpluggedPaper.config;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -13,6 +14,12 @@ import lombok.Setter;
 @Configuration
 public class UnpluggedPlayers {
     private List<PlayerEntry> unpluggedPlayers = List.of();
+
+    public List<PlayerEntry> emptyList() {
+        List<PlayerEntry> copy = new ArrayList<>(unpluggedPlayers);
+        unpluggedPlayers.clear();
+        return copy;
+    }
 
     @Getter
     @Setter
