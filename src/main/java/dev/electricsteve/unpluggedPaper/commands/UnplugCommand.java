@@ -118,7 +118,7 @@ public class UnplugCommand {
                 UnpluggedPaperApiImpl.spawnPlayerWithUuidAndSkin(name, plugin, options);
 
                 Component broadcast = displayName.color(NamedTextColor.YELLOW).append(Component.text(" has been unplugged", NamedTextColor.YELLOW));
-                if (reason != null && !reason.isEmpty()) broadcast = broadcast.append(Component.text(", ", NamedTextColor.YELLOW)).append(Component.text(reason));
+                if (reason != null && !reason.isEmpty()) broadcast = broadcast.append(Component.text(", ", NamedTextColor.YELLOW)).append(Component.text(reason, NamedTextColor.WHITE));
                 this.plugin.broadcast(broadcast);
             });
         }, 1); // We wait 1 tick
