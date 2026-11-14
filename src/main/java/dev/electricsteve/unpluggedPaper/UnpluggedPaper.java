@@ -185,9 +185,9 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
 
                 // TODO: merge this with the one in `UnplugCommand`
                 FakePlayerManager fpm = this.fppComponent.getFpm();
-                FakePlayerPlusJava.getFromRepository(fpm, name).thenAccept(fakePlayer -> {
-                    if (fakePlayer != null) {
-                        UUID existingUuid = fakePlayer.getUuid();
+                FakePlayerPlusJava.getFromRepository(fpm, name).thenAccept(fakePlayerInRepository -> {
+                    if (fakePlayerInRepository != null) {
+                        UUID existingUuid = fakePlayerInRepository.getUuid();
                         if (!existingUuid.equals(uuid)) {
                             try {
                                 FakePlayerPlusJava.deleteFromRepository(fpm, existingUuid).get();
@@ -225,6 +225,10 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
 
     public Optional<UnpluggedPlayers.PlayerEntry> getPlayerEntry(UUID uuid) {
         return this.unpluggedPlayersConfig.getUnpluggedPlayers().stream().filter(playerEntry -> playerEntry.getUuid().equals(uuid)).findFirst();
+    }
+
+    public Optional<UnpluggedPlayers.PlayerEntry> getPlayerEntry(String name) {
+        return this.unpluggedPlayersConfig.getUnpluggedPlayers().stream().filter(playerEntry -> playerEntry.getName().equals(name)).findFirst();
     }
 
     public void updatePlayerEntry(UUID uuid, String name, UnpluggedPlayers.UnpluggedStatus status, long time, long startTime, @NotNull String reason) {

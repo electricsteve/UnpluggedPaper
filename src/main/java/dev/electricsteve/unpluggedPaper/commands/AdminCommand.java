@@ -1,5 +1,12 @@
 package dev.electricsteve.unpluggedPaper.commands;
 
+import static dev.electricsteve.unpluggedPaper.commands.UnplugCommand.DEFAULT_FAKE_PLAYER_SETTINGS;
+
+import com.coderxi.plugin.fakeplayer.api.manager.FakePlayerManager;
+import com.coderxi.plugin.fakeplayer.api.model.PlayerTextures;
+import com.destroystokyo.paper.profile.PlayerProfile;
+import com.destroystokyo.paper.profile.ProfileProperty;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -14,11 +21,18 @@ import org.jetbrains.annotations.NotNull;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 import dev.electricsteve.unpluggedPaper.UnpluggedPaper;
+import dev.electricsteve.unpluggedPaper.UnpluggedPaperApiImpl;
+import dev.electricsteve.unpluggedPaper.api.PlayerSpawnOptions;
 import dev.electricsteve.unpluggedPaper.config.UnpluggedPlayers;
+import dev.electricsteve.unpluggedPaper.kotlin.FakePlayerPlusJava;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Default;
+import revxrsal.commands.annotation.Named;
+import revxrsal.commands.annotation.Range;
 import revxrsal.commands.annotation.Subcommand;
 import revxrsal.commands.bukkit.actor.BukkitCommandActor;
 import revxrsal.commands.bukkit.annotation.CommandPermission;
@@ -114,8 +128,83 @@ public class AdminCommand {
     }
 
     @Subcommand("spawn")
-    public void spawn(BukkitCommandActor actor) {
+    public void spawn(BukkitCommandActor actor, @Named("player") String playerName,
+                      @Default("0") @Range(min = 0) long durationMinutes, @Default("\"\"") String reason) {
+        UnpluggedPlayers.PlayerEntry playerEntry = plugin.getPlayerEntry(playerName).orElse(null);
 
+        if (playerEntry == null) {
+            actor.reply(Component.text("Error: no player found", NamedTextColor.RED));
+            return;
+        }
+
+        UUID uuid = playerEntry.getUuid();
+        if (durationMinutes == 0) durationMinutes = plugin.getConfiguration().getUnplugged().defaultUnpluggedTimeout();
+        long durationMillis = durationMinutes * 60L * 1000L;
+        OfflinePlayer offlinePlayer = plugin.getServer().getOfflinePlayer(uuid);
+        if (offlinePlayer.isOnline()) {
+            actor.reply(Component.text("Error: player is online", NamedTextColor.RED));
+            return;
+        } else if (offlinePlayer.isBanned()) {
+            actor.reply(Component.text("Error: player is banned", NamedTextColor.RED));
+            return;
+        }
+        Location location = offlinePlayer.getLocation();
+        if (location == null) {
+            actor.reply(Component.text("Error: no location found", NamedTextColor.RED));
+            return;
+        }
+        double health = 20.0; // TODO: fix this, currently waiting on response from paper devs (https://discord.com/channels/289587909051416579/925530366192779286/1566422373270421515)
+        int foodLevel = 20;
+
+        // Player profile textures
+        PlayerProfile playerProfile = offlinePlayer.getPlayerProfile();
+        playerProfile.complete();
+        Set<ProfileProperty> profileProperties = playerProfile.getProperties();
+        ProfileProperty textureProperty = profileProperties.stream().filter(p -> p.getName().equals("textures")).findFirst().orElse(null);
+        PlayerTextures playerTextures = textureProperty != null && textureProperty.getSignature() != null ?
+            new PlayerTextures(textureProperty.getValue(), textureProperty.getSignature()) : null;
+
+        long startTime = System.currentTimeMillis();
+        this.plugin.updatePlayerEntry(uuid, playerName, UnpluggedPlayers.UnpluggedStatus.ACTIVE, durationMillis, startTime, reason);
+
+        // TODO: merge this with the one in `UnplugCommand`
+        FakePlayerManager fpm = plugin.getFppComponent().getFpm();
+        FakePlayerPlusJava.getFromRepository(fpm, playerName).thenAccept(fakePlayerInRepository -> {
+            if (fakePlayerInRepository != null) {
+                UUID existingUuid = fakePlayerInRepository.getUuid();
+                if (!existingUuid.equals(uuid)) {
+                    try {
+                        FakePlayerPlusJava.deleteFromRepository(fpm, existingUuid).get();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+            PlayerSpawnOptions options = PlayerSpawnOptions.builder()
+                .location(location)
+                .uuid(uuid)
+                .playerTextures(playerTextures)
+                .sleepingIgnored(false)
+                .setClientLoaded(true)
+                .health(health)
+                .foodLevel(foodLevel)
+                .fakePlayerSettings(DEFAULT_FAKE_PLAYER_SETTINGS.apply(location.getWorld()))
+                .enableAdvancements(true)
+                .durationMillis(durationMillis)
+                .durationOverCallback(_ -> {
+                    plugin.getPlayerEntry(uuid).ifPresent(entry -> entry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED));
+                    plugin.broadcastPlugBack(Component.text(playerName), " AFK session expired", System.currentTimeMillis() - playerEntry.getStartTime());
+                    plugin.savePlayersConfiguration();
+                })
+                .hidePlayer(plugin.getConfiguration().getUnplugged().unpluggedHidePlayer())
+                .hidePlayerOps(plugin.getConfiguration().getUnplugged().unpluggedHideFromOps())
+                .build();
+            UnpluggedPaperApiImpl.spawnPlayerWithUuidAndSkin(playerName, plugin, options);
+
+            Component broadcast = Component.text(playerName, NamedTextColor.YELLOW).append(Component.text(" has been unplugged", NamedTextColor.YELLOW));
+            if (!reason.isEmpty()) broadcast = broadcast.append(Component.text(", ", NamedTextColor.YELLOW)).append(Component.text(reason, NamedTextColor.WHITE));
+            this.plugin.broadcast(broadcast);
+        });
     }
 
     @Subcommand("kick")
