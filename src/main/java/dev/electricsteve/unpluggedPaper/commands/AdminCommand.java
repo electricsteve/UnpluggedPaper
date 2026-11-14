@@ -21,8 +21,10 @@ import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Default;
 import revxrsal.commands.annotation.Subcommand;
 import revxrsal.commands.bukkit.actor.BukkitCommandActor;
+import revxrsal.commands.bukkit.annotation.CommandPermission;
 
 @Command("unplugged-admin")
+@CommandPermission("unplugged.admin")
 public class AdminCommand {
     // TODO: save & set commands (changing configuration)
     private final UnpluggedPaper plugin;

@@ -16,3 +16,8 @@ dependencies:
       load: BEFORE
       required: true
       join-classpath: true
+
+permissions:
+  unplugged.admin:
+    description: Allows access to the Unplugged admin command.
+    default: op
