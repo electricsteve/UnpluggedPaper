@@ -38,23 +38,31 @@ public class AdminCommand {
 
     @Subcommand("purge")
     public void purge(BukkitCommandActor actor) {
-        // TODO: create player entry on join
-        // Remove all players from the data file and resyncs from online players
         List<UnpluggedPlayers.PlayerEntry> activeFakePlayers = new java.util.ArrayList<>();
-        int i = 0;
+        int purged = 0;
+        int resynced = 0;
+        int shadows = 0;
         for (UnpluggedPlayers.PlayerEntry entry : plugin.getUnpluggedPlayersConfig().emptyList()) {
-            i++;
+            purged++;
             if (entry.getStatus() == UnpluggedPlayers.UnpluggedStatus.ACTIVE
             && plugin.getServer().getPlayer(entry.getUuid()) != null) activeFakePlayers.add(entry);
         }
         for (UnpluggedPlayers.PlayerEntry entry : activeFakePlayers) {
+            resynced++;
+            shadows++;
             plugin.getUnpluggedPlayersConfig().getUnpluggedPlayers().add(entry);
         }
-        int shadows = activeFakePlayers.size();
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            Optional<UnpluggedPlayers.PlayerEntry> optionalPlayerEntry = plugin.getPlayerEntry(player.getUniqueId());
+            if (optionalPlayerEntry.isEmpty()) {
+                resynced++;
+                plugin.updatePlayerEntry(player.getUniqueId(), player.getName(), UnpluggedPlayers.UnpluggedStatus.INACTIVE, -1, -1, "");
+            }
+        }
         actor.reply(Component.text("Purged: ", NamedTextColor.YELLOW)
-            .append(Component.text(i, NamedTextColor.RED))
+            .append(Component.text(purged, NamedTextColor.RED))
             .append(Component.text(" players, and then resynced ", NamedTextColor.YELLOW))
-            .append(Component.text(shadows, NamedTextColor.GREEN))
+            .append(Component.text(resynced, NamedTextColor.GREEN))
             .append(Component.text(" current players, with ", NamedTextColor.YELLOW))
             .append(Component.text(shadows, NamedTextColor.GOLD))
             .append(Component.text(" shadows", NamedTextColor.YELLOW)));

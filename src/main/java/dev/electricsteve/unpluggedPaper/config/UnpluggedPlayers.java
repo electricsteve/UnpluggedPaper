@@ -1,5 +1,7 @@
 package dev.electricsteve.unpluggedPaper.config;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +27,7 @@ public class UnpluggedPlayers {
     @Setter
     @AllArgsConstructor
     @Configuration
+    @NotNullByDefault
     public static class PlayerEntry {
         private UUID uuid;
         private String name;

@@ -28,6 +28,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -226,7 +227,7 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         return this.unpluggedPlayersConfig.getUnpluggedPlayers().stream().filter(playerEntry -> playerEntry.getUuid().equals(uuid)).findFirst();
     }
 
-    public void updatePlayerEntry(UUID uuid, String name, UnpluggedPlayers.UnpluggedStatus status, long time, long startTime, String reason) {
+    public void updatePlayerEntry(UUID uuid, String name, UnpluggedPlayers.UnpluggedStatus status, long time, long startTime, @NotNull String reason) {
         Optional<UnpluggedPlayers.PlayerEntry> optionalPlayerEntry = getPlayerEntry(uuid);
         if (optionalPlayerEntry.isPresent()) {
             UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
@@ -312,25 +313,33 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         // TODO: this shouldn't be here, move this to something proper when doing the api
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
+        // Hide join message if fake & config enabled
         if (isFakePlayer(uuid)) {
             if (configuration.getMessages().hideUnpluggedJoin()) event.joinMessage(null);
         }
+        // Hide fakes from real players if config enabled
         if (!isFakePlayer(uuid) && this.getConfiguration().getUnplugged().unpluggedHidePlayer() && (this.getConfiguration().getUnplugged().unpluggedHideFromOps() || !player.isOp())) this.getServer().getOnlinePlayers().stream()
             .filter(otherPlayer -> isFakePlayer(otherPlayer.getUniqueId()))
             .forEach(fakePlayer -> player.hidePlayer(this, fakePlayer));
         Optional<UnpluggedPlayers.PlayerEntry> optionalPlayerEntry = getPlayerEntry(uuid);
-        if (optionalPlayerEntry.isPresent() && !isFakePlayer(uuid)) {
-            UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
-            UnpluggedPlayers.UnpluggedStatus status = playerEntry.getStatus();
-            if (status.equals(UnpluggedPlayers.UnpluggedStatus.INACTIVE)) return;
-            if (status.equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE)) {
-                getComponentLogger().error("Illegal state: on real player join, it's Unplugged entry was ACTIVE");
-                return;
+        if (!isFakePlayer(uuid)) {
+            if (optionalPlayerEntry.isPresent()) {
+                UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
+                UnpluggedPlayers.UnpluggedStatus status = playerEntry.getStatus();
+                if (status.equals(UnpluggedPlayers.UnpluggedStatus.INACTIVE)) return;
+                if (status.equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE)) {
+                    getComponentLogger().error("Illegal state: on real player join, it's Unplugged entry was ACTIVE");
+                    return;
+                }
+                // Hide join message if the player was unplugged and config enabled
+                if (status.equals(UnpluggedPlayers.UnpluggedStatus.RETURNED) && configuration.getMessages().hideUnpluggedJoin()) {
+                    event.joinMessage(null);
+                }
+                playerEntry.reset();
+            } else {
+                // Player has no entry, create one
+                this.updatePlayerEntry(uuid, player.getName(), UnpluggedPlayers.UnpluggedStatus.INACTIVE, -1, -1, "");
             }
-            if (status.equals(UnpluggedPlayers.UnpluggedStatus.RETURNED) && configuration.getMessages().hideUnpluggedJoin()) {
-                event.joinMessage(null);
-            }
-            playerEntry.reset();
         }
     }
 
