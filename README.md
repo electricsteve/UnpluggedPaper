@@ -41,7 +41,7 @@ Full feature difference list:
 - `/unplugged-admin` command only half implemented
   - `reload` implemented, shouldn't really be different
   - `list` implemented, but format is slightly different
-  - `purge` implemented, but doesn't add entries for online players back yet
+  - `purge` implemented, shouldn't really be different
   - `info` implemented, but format just as different as list
   - `spawn`, `kick`, `save` and `set` are not implemented yet
 
