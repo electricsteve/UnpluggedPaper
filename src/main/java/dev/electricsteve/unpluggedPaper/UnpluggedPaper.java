@@ -45,6 +45,7 @@ import de.exlll.configlib.YamlConfigurationStore;
 import de.exlll.configlib.YamlConfigurations;
 import dev.electricsteve.unpluggedPaper.api.PlayerSpawnOptions;
 import dev.electricsteve.unpluggedPaper.commands.AdminCommand;
+import dev.electricsteve.unpluggedPaper.commands.PlayerEntryParameterType;
 import dev.electricsteve.unpluggedPaper.commands.UnplugCommand;
 import dev.electricsteve.unpluggedPaper.config.UnpluggedConfiguration;
 import dev.electricsteve.unpluggedPaper.config.UnpluggedPlayers;
@@ -121,7 +122,11 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         // Initialize fpp component and commands
         this.fppComponent = new UnpluggedFppComponent();
         FakePlayerPlusPluginApi.Companion.getApi().registerComponent(fppComponent);
-        var lamp = BukkitLamp.builder(this).build();
+        var lamp = BukkitLamp.builder(this)
+            .parameterTypes(builder -> {
+                builder.addParameterType(UnpluggedPlayers.PlayerEntry.class, new PlayerEntryParameterType(this));
+            })
+            .build();
         lamp.register(new UnplugCommand(this));
         lamp.register(new AdminCommand(this));
 

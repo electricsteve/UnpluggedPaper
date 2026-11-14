@@ -128,15 +128,9 @@ public class AdminCommand {
     }
 
     @Subcommand("spawn")
-    public void spawn(BukkitCommandActor actor, @Named("player") String playerName,
+    public void spawn(BukkitCommandActor actor, @Named("player") UnpluggedPlayers.PlayerEntry playerEntry,
                       @Default("0") @Range(min = 0) long durationMinutes, @Default("\"\"") String reason) {
-        UnpluggedPlayers.PlayerEntry playerEntry = plugin.getPlayerEntry(playerName).orElse(null);
-
-        if (playerEntry == null) {
-            actor.reply(Component.text("Error: no player found", NamedTextColor.RED));
-            return;
-        }
-
+        String name = playerEntry.getName();
         UUID uuid = playerEntry.getUuid();
         if (durationMinutes == 0) durationMinutes = plugin.getConfiguration().getUnplugged().defaultUnpluggedTimeout();
         long durationMillis = durationMinutes * 60L * 1000L;
@@ -165,11 +159,11 @@ public class AdminCommand {
             new PlayerTextures(textureProperty.getValue(), textureProperty.getSignature()) : null;
 
         long startTime = System.currentTimeMillis();
-        this.plugin.updatePlayerEntry(uuid, playerName, UnpluggedPlayers.UnpluggedStatus.ACTIVE, durationMillis, startTime, reason);
+        this.plugin.updatePlayerEntry(uuid, name, UnpluggedPlayers.UnpluggedStatus.ACTIVE, durationMillis, startTime, reason);
 
         // TODO: merge this with the one in `UnplugCommand`
         FakePlayerManager fpm = plugin.getFppComponent().getFpm();
-        FakePlayerPlusJava.getFromRepository(fpm, playerName).thenAccept(fakePlayerInRepository -> {
+        FakePlayerPlusJava.getFromRepository(fpm, name).thenAccept(fakePlayerInRepository -> {
             if (fakePlayerInRepository != null) {
                 UUID existingUuid = fakePlayerInRepository.getUuid();
                 if (!existingUuid.equals(uuid)) {
@@ -193,15 +187,15 @@ public class AdminCommand {
                 .durationMillis(durationMillis)
                 .durationOverCallback(_ -> {
                     plugin.getPlayerEntry(uuid).ifPresent(entry -> entry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED));
-                    plugin.broadcastPlugBack(Component.text(playerName), " AFK session expired", System.currentTimeMillis() - playerEntry.getStartTime());
+                    plugin.broadcastPlugBack(Component.text(name), " AFK session expired", System.currentTimeMillis() - playerEntry.getStartTime());
                     plugin.savePlayersConfiguration();
                 })
                 .hidePlayer(plugin.getConfiguration().getUnplugged().unpluggedHidePlayer())
                 .hidePlayerOps(plugin.getConfiguration().getUnplugged().unpluggedHideFromOps())
                 .build();
-            UnpluggedPaperApiImpl.spawnPlayerWithUuidAndSkin(playerName, plugin, options);
+            UnpluggedPaperApiImpl.spawnPlayerWithUuidAndSkin(name, plugin, options);
 
-            Component broadcast = Component.text(playerName, NamedTextColor.YELLOW).append(Component.text(" has been unplugged", NamedTextColor.YELLOW));
+            Component broadcast = Component.text(name, NamedTextColor.YELLOW).append(Component.text(" has been unplugged", NamedTextColor.YELLOW));
             if (!reason.isEmpty()) broadcast = broadcast.append(Component.text(", ", NamedTextColor.YELLOW)).append(Component.text(reason, NamedTextColor.WHITE));
             this.plugin.broadcast(broadcast);
         });
