@@ -115,10 +115,22 @@ public class AdminCommand {
 
     @Subcommand("spawn")
     public void spawn(BukkitCommandActor actor) {
+
     }
 
     @Subcommand("kick")
     public void kick(BukkitCommandActor actor) {
+
+    }
+
+    @Subcommand("save")
+    public void save(BukkitCommandActor actor) {
+
+    }
+
+    @Subcommand("set")
+    public void set(BukkitCommandActor actor) {
+
     }
 
     private @NotNull TextComponent getUnpluggedDebugText(UnpluggedPlayers.PlayerEntry entry, int i) {
