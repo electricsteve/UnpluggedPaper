@@ -6,6 +6,6 @@ import java.util.List;
 import kotlin.Pair;
 
 /// The list is sorted from the actual field to the root
-public record ConfigInstanceField(List<Pair<Object, Field>> list) {
+public record ConfigInstanceField(List<Pair<Object, Field>> list, String input) {
 
 }

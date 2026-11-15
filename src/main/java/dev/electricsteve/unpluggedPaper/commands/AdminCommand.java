@@ -308,6 +308,21 @@ public class AdminCommand {
         }
     }
 
+    @Subcommand("get")
+    public void get(BukkitCommandActor actor, ConfigInstanceField instanceField) {
+        Pair<Object, Field> pair = instanceField.list().getFirst();
+        try {
+            pair.getSecond().setAccessible(true);
+            String value = pair.getSecond().get(pair.getFirst()).toString();
+            actor.reply(Component.text("The value of ")
+                .append(Component.text(instanceField.input(), NamedTextColor.LIGHT_PURPLE))
+                .append(Component.text(" is "))
+                .append(Component.text(value, NamedTextColor.GOLD)));
+        } catch (IllegalAccessException e) {
+            actor.reply(Component.text("An error occurred getting this config value.", NamedTextColor.RED));
+        }
+    }
+
     /// The list is supposed to be sorted from the actual field to the root
     private void setFieldValue(List<Pair<Object, Field>> list, Object value) throws ReflectiveOperationException {
         Pair<Object, Field> pair = list.getFirst();

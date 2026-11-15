@@ -55,11 +55,25 @@ public class ConfigurationVariableParameterType implements ParameterType<BukkitC
                 }
             }
         }
-        return new ConfigInstanceField(list.reversed());
+        return new ConfigInstanceField(list.reversed(), fieldName);
     }
 
     @Override
     public @NotNull SuggestionProvider<BukkitCommandActor> defaultSuggestions() {
-        return ParameterType.super.defaultSuggestions();
+        return _ -> getFieldNames(plugin.getConfiguration().getClass());
+    }
+
+    private List<String> getFieldNames(Class<?> clazz) {
+        List<String> list = new ArrayList<>();
+        for (Field field : clazz.getDeclaredFields()) {
+            Class<?> fieldType = field.getType();
+            String fieldName = field.getName();
+            if (fieldType.getPackageName().startsWith("dev.electricsteve")) {
+                list.addAll(getFieldNames(fieldType).stream().map(string -> fieldName + "." + string).toList());
+            } else {
+                list.add(fieldName);
+            }
+        }
+        return list;
     }
 }
