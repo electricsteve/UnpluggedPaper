@@ -1,6 +1,7 @@
 package dev.electricsteve.unpluggedPaper.commands;
 
 import static dev.electricsteve.unpluggedPaper.commands.UnplugCommand.DEFAULT_FAKE_PLAYER_SETTINGS;
+import static dev.electricsteve.unpluggedPaper.commands.UnplugCommand.formatTimeDifference;
 
 import com.coderxi.plugin.fakeplayer.api.entity.FakePlayer;
 import com.coderxi.plugin.fakeplayer.api.manager.FakePlayerManager;
@@ -12,6 +13,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.bukkit.Location;
@@ -188,7 +190,19 @@ public class AdminCommand {
                 .enableAdvancements(true)
                 .durationMillis(durationMillis)
                 .durationOverCallback(_ -> {
-                    plugin.getPlayerEntry(uuid).ifPresent(entry -> entry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED));
+                    this.plugin.getPlayerEntry(uuid).ifPresent(entry -> {
+                        entry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED);
+                        entry.setReason(MiniMessage.miniMessage().serialize(
+                            Component.text()
+                                .append(plugin.getConfiguration().getMessages().displayDuration() ?
+                                    Component.text("Your ", NamedTextColor.YELLOW).append(formatTimeDifference(durationMillis))
+                                        .append(Component.text("Session was successful.", NamedTextColor.YELLOW))
+                                    : Component.text("Your session was successful."))
+                                .append(Component.text("\n - For: ", NamedTextColor.GRAY))
+                                .append(Component.text("Timeout expired", NamedTextColor.YELLOW))
+                                .build()
+                        ));
+                    });
                     plugin.broadcastPlugBack(Component.text(name), " AFK session expired", System.currentTimeMillis() - playerEntry.getStartTime());
                     plugin.savePlayersConfiguration();
                 })
@@ -210,6 +224,14 @@ public class AdminCommand {
         Component displayName = fakePlayer.getPlayer().displayName();
         actor.reply(Component.text(" - Kicking unplugged player: ", NamedTextColor.GRAY).append(displayName.color(NamedTextColor.YELLOW)));
         playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.INTERRUPTED);
+        playerEntry.setReason(MiniMessage.miniMessage().serialize(
+            Component.text("Your AFK session was interrupted", NamedTextColor.YELLOW)
+                .append(plugin.getConfiguration().getMessages().displayDuration() ?
+                    Component.text(" after: ", NamedTextColor.YELLOW).append(formatTimeDifference(System.currentTimeMillis() - playerEntry.getStartTime()))
+                    : Component.text(""))
+                .append(Component.text("\n - For: ", NamedTextColor.GRAY))
+                .append(Component.text("AFK session ended by an admin", NamedTextColor.RED))
+        ));
         plugin.broadcastPlugBack(displayName.color(NamedTextColor.YELLOW), " AFK session terminated", System.currentTimeMillis() - playerEntry.getStartTime());
         plugin.savePlayersConfiguration();
         fakePlayer.quit("The unplugged session was terminated by an admin.");

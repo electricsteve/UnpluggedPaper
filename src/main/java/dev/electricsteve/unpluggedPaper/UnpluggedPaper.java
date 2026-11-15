@@ -1,6 +1,7 @@
 package dev.electricsteve.unpluggedPaper;
 
 import static dev.electricsteve.unpluggedPaper.commands.UnplugCommand.DEFAULT_FAKE_PLAYER_SETTINGS;
+import static dev.electricsteve.unpluggedPaper.commands.UnplugCommand.formatTimeDifference;
 
 import com.coderxi.plugin.fakeplayer.api.FakePlayerPlusPluginApi;
 import com.coderxi.plugin.fakeplayer.api.manager.FakePlayerManager;
@@ -10,6 +11,7 @@ import com.destroystokyo.paper.profile.ProfileProperty;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.logging.log4j.LogManager;
@@ -162,6 +164,16 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                 UUID uuid = playerEntry.getUuid();
                 if (endTime <= currentTimeMillis) {
                     playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED);
+                    playerEntry.setReason(MiniMessage.miniMessage().serialize(
+                        Component.text()
+                            .append(this.configuration.getMessages().displayDuration() ?
+                                Component.text("Your ", NamedTextColor.YELLOW).append(formatTimeDifference(playerEntry.getTime()))
+                                    .append(Component.text("Session was successful.", NamedTextColor.YELLOW))
+                                : Component.text("Your session was successful."))
+                            .append(Component.text("\n - For: ", NamedTextColor.GRAY))
+                            .append(Component.text("Timeout expired", NamedTextColor.YELLOW))
+                            .build()
+                    ));
                     this.broadcastPlugBack(Component.text(name), " AFK session expired", playerEntry.getTime());
                     this.savePlayersConfiguration();
                     return;
@@ -173,6 +185,14 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                 if (offlinePlayer.isOnline() || offlinePlayer.isBanned()) {
                     debugLog("Not spawning player {} because they were either banned or a player with this UUID is already online.", uuid);
                     playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.TERMINATED);
+                    playerEntry.setReason(MiniMessage.miniMessage().serialize(
+                        Component.text("Your AFK session was interrupted", NamedTextColor.YELLOW)
+                            .append(this.configuration.getMessages().displayDuration() ?
+                                Component.text(" after: ", NamedTextColor.YELLOW).append(formatTimeDifference(durationHadMillis))
+                                : Component.text(""))
+                            .append(Component.text("\n - For: ", NamedTextColor.GRAY))
+                            .append(Component.text("AFK session terminated", NamedTextColor.RED))
+                    ));
                     broadcastPlugBack(Component.text(playerEntry.getName()), " AFK session terminated", durationHadMillis);
                     savePlayersConfiguration();
                     continue;
@@ -215,7 +235,19 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                         .enableAdvancements(true)
                         .durationMillis(durationLeftMillis)
                         .durationOverCallback(_ -> {
-                            this.getPlayerEntry(uuid).ifPresent(entry -> entry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED));
+                            this.getPlayerEntry(uuid).ifPresent(entry -> {
+                                entry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED);
+                                entry.setReason(MiniMessage.miniMessage().serialize(
+                                    Component.text()
+                                        .append(this.configuration.getMessages().displayDuration() ?
+                                            Component.text("Your ", NamedTextColor.YELLOW).append(formatTimeDifference(playerEntry.getTime()))
+                                                .append(Component.text("Session was successful.", NamedTextColor.YELLOW))
+                                            : Component.text("Your session was successful."))
+                                        .append(Component.text("\n - For: ", NamedTextColor.GRAY))
+                                        .append(Component.text("Timeout expired", NamedTextColor.YELLOW))
+                                        .build()
+                                ));
+                            });
                             this.broadcastPlugBack(Component.text(name), " AFK session expired", System.currentTimeMillis() - playerEntry.getStartTime());
                             this.savePlayersConfiguration();
                         })
@@ -268,6 +300,14 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                 UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
                 if (!playerEntry.getStatus().equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE)) return;
                 playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.RETURNED);
+                playerEntry.setReason(MiniMessage.miniMessage().serialize(
+                    Component.text("Your AFK session was interrupted", NamedTextColor.YELLOW)
+                        .append(this.configuration.getMessages().displayDuration() ?
+                            Component.text(" after: ", NamedTextColor.YELLOW).append(formatTimeDifference(System.currentTimeMillis() - playerEntry.getStartTime()))
+                            : Component.text(""))
+                        .append(Component.text("\n - For: ", NamedTextColor.GRAY))
+                        .append(Component.text("Replaced by player", NamedTextColor.GOLD))
+                ));
                 broadcastPlugBack(event.getPlayer().displayName(), " has returned", System.currentTimeMillis() - playerEntry.getStartTime());
                 savePlayersConfiguration();
                 if (configuration.getMessages().hideUnpluggedJoin()) event.leaveMessage(null);
@@ -304,7 +344,16 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                     player.setHealth(attribute != null ? attribute.getValue() : 20);
                     event.setCancelled(true);
                 }
+                long durationHadMillis = System.currentTimeMillis() - playerEntry.getStartTime();
                 playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.TERMINATED);
+                playerEntry.setReason(MiniMessage.miniMessage().serialize(
+                    Component.text("Your AFK session was interrupted", NamedTextColor.YELLOW)
+                        .append(this.configuration.getMessages().displayDuration() ?
+                            Component.text(" after: ", NamedTextColor.YELLOW).append(formatTimeDifference(durationHadMillis))
+                            : Component.text(""))
+                        .append(Component.text("\n - For: ", NamedTextColor.GRAY))
+                        .append(Component.text("AFK session terminated", NamedTextColor.RED))
+                ));
                 broadcastPlugBack(player.displayName(), " AFK session terminated", System.currentTimeMillis() - playerEntry.getStartTime());
                 savePlayersConfiguration();
             }
@@ -345,6 +394,9 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                 // Hide join message if the player was unplugged and config enabled
                 if (status.equals(UnpluggedPlayers.UnpluggedStatus.RETURNED) && configuration.getMessages().hideUnpluggedJoin()) {
                     event.joinMessage(null);
+                }
+                if (!playerEntry.getReason().isEmpty() && configuration.getMessages().displayReturnFeedback()) {
+                    player.sendMessage(MiniMessage.miniMessage().deserialize(playerEntry.getReason()));
                 }
                 playerEntry.reset();
             } else {

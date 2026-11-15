@@ -63,7 +63,7 @@ public class UnpluggedConfiguration {
         boolean hideUnpluggedJoin,
         @Comment("Enables the duration display of Unplugged status messages.")
         boolean displayDuration,
-        @Comment("[DOES NOTHING ATM] Enables the Feedback display of the reason why an Unplugged session ended")
+        @Comment("Enables the Feedback display of the reason why an Unplugged session ended")
         boolean displayReturnFeedback
     ) {}
 }
