@@ -2,6 +2,7 @@ package dev.electricsteve.unpluggedPaper.commands;
 
 import static dev.electricsteve.unpluggedPaper.commands.UnplugCommand.DEFAULT_FAKE_PLAYER_SETTINGS;
 
+import com.coderxi.plugin.fakeplayer.api.entity.FakePlayer;
 import com.coderxi.plugin.fakeplayer.api.manager.FakePlayerManager;
 import com.coderxi.plugin.fakeplayer.api.model.PlayerTextures;
 import com.destroystokyo.paper.profile.PlayerProfile;
@@ -202,8 +203,19 @@ public class AdminCommand {
     }
 
     @Subcommand("kick")
-    public void kick(BukkitCommandActor actor) {
-
+    public void kick(BukkitCommandActor actor, String name) {
+        FakePlayer fakePlayer = plugin.getFppComponent().getFpm().get(name);
+        UnpluggedPlayers.PlayerEntry playerEntry = plugin.getPlayerEntry(name).orElse(null);
+        if (fakePlayer == null || playerEntry == null) {
+            actor.reply(Component.text("Error: no unplugged player found", NamedTextColor.RED));
+            return;
+        }
+        Component displayName = fakePlayer.getPlayer().displayName();
+        actor.reply(Component.text(" - Kicking unplugged player: ", NamedTextColor.GRAY).append(displayName.color(NamedTextColor.YELLOW)));
+        playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.INTERRUPTED);
+        plugin.broadcastPlugBack(displayName.color(NamedTextColor.YELLOW), " AFK session terminated", System.currentTimeMillis() - playerEntry.getStartTime());
+        plugin.savePlayersConfiguration();
+        fakePlayer.quit("The unplugged session was terminated by an admin.");
     }
 
     @Subcommand("save")

@@ -121,6 +121,6 @@ public class UnplugCommand {
                 if (!reason.isEmpty()) broadcast = broadcast.append(Component.text(", ", NamedTextColor.YELLOW)).append(Component.text(reason, NamedTextColor.WHITE));
                 this.plugin.broadcast(broadcast);
             });
-        }, 1); // We wait 1 tick
+        }, 10); // We wait 10 ticks, this was increased because the fake player was sometimes summoned before the real player left
     }
 }
