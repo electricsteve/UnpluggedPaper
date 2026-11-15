@@ -21,7 +21,12 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.RecordComponent;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -31,8 +36,10 @@ import dev.electricsteve.unpluggedPaper.UnpluggedPaper;
 import dev.electricsteve.unpluggedPaper.UnpluggedPaperApiImpl;
 import dev.electricsteve.unpluggedPaper.UnpluggedPlayer;
 import dev.electricsteve.unpluggedPaper.api.PlayerSpawnOptions;
+import dev.electricsteve.unpluggedPaper.config.ConfigInstanceField;
 import dev.electricsteve.unpluggedPaper.config.UnpluggedPlayers;
 import dev.electricsteve.unpluggedPaper.kotlin.FakePlayerPlusJava;
+import kotlin.Pair;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Default;
 import revxrsal.commands.annotation.Named;
@@ -65,7 +72,7 @@ public class AdminCommand {
         for (UnpluggedPlayers.PlayerEntry entry : plugin.getUnpluggedPlayersConfig().emptyList()) {
             purged++;
             if (entry.getStatus() == UnpluggedPlayers.UnpluggedStatus.ACTIVE
-            && plugin.getServer().getPlayer(entry.getUuid()) != null) activeFakePlayers.add(entry);
+                && plugin.getServer().getPlayer(entry.getUuid()) != null) activeFakePlayers.add(entry);
         }
         for (UnpluggedPlayers.PlayerEntry entry : activeFakePlayers) {
             resynced++;
@@ -212,7 +219,8 @@ public class AdminCommand {
             UnpluggedPaperApiImpl.spawnPlayerWithUuidAndSkin(name, plugin, options);
 
             Component broadcast = Component.text(name, NamedTextColor.YELLOW).append(Component.text(" has been unplugged", NamedTextColor.YELLOW));
-            if (!reason.isEmpty()) broadcast = broadcast.append(Component.text(", ", NamedTextColor.YELLOW)).append(Component.text(reason, NamedTextColor.WHITE));
+            if (!reason.isEmpty())
+                broadcast = broadcast.append(Component.text(", ", NamedTextColor.YELLOW)).append(Component.text(reason, NamedTextColor.WHITE));
             this.plugin.broadcast(broadcast);
         });
     }
@@ -239,12 +247,97 @@ public class AdminCommand {
 
     @Subcommand("save")
     public void save(BukkitCommandActor actor) {
-
+        plugin.saveConfiguration();
+        plugin.savePlayersConfiguration();
+        actor.reply(Component.text("Saved configuration files!", NamedTextColor.GREEN));
     }
 
     @Subcommand("set")
-    public void set(BukkitCommandActor actor) {
+    public void set(BukkitCommandActor actor, ConfigInstanceField configInstanceField, String value) {
+        try {
+            Field field = configInstanceField.list().getFirst().getSecond();
+            Class<?> fieldType = field.getType();
+            Object parsedValue = null;
+            if (fieldType == int.class || fieldType == Integer.class) {
+                parsedValue = Integer.parseInt(value);
+            } else if (fieldType == boolean.class || fieldType == Boolean.class) {
+                if (value.equalsIgnoreCase("true")) {
+                    parsedValue = true;
+                } else if (value.equalsIgnoreCase("false")) {
+                    parsedValue = false;
+                } else {
+                    actor.reply(Component.text("Invalid boolean! Use either 'true' or 'false'", NamedTextColor.RED));
+                    return;
+                }
+            } else if (fieldType == long.class || fieldType == Long.class) {
+                parsedValue = Long.parseLong(value);
+            } else if (fieldType == float.class || fieldType == Float.class) {
+                parsedValue = Float.parseFloat(value);
+            } else if (fieldType == double.class || fieldType == Double.class) {
+                parsedValue = Double.parseDouble(value);
+            } else if (fieldType == String.class) {
+                parsedValue = value;
+            } else if (fieldType.isEnum()) {
+                boolean found = false;
+                for (Object enumConst : fieldType.getEnumConstants()) {
+                    if (((Enum<?>) enumConst).name().equalsIgnoreCase(value)) {
+                        parsedValue = enumConst;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    actor.reply(Component.text("Invalid option! Valid options are: " + Arrays.toString(fieldType.getEnumConstants()), NamedTextColor.RED));
+                    return;
+                }
+            }
+            if (parsedValue == null) {
+                actor.reply("Unsupported type for config field");
+                return;
+            }
+            try {
+                setFieldValue(configInstanceField.list(), parsedValue);
+            } catch (ReflectiveOperationException e) {
+                actor.reply(Component.text("Error setting that config variable. (check server logs)", NamedTextColor.RED));
+            }
+            actor.reply(Component.text("Config: '" + field.getName() + "' updated to " + value + ".", NamedTextColor.GREEN)
+                .append(Component.text("\nNOTE: Some settings may require a server restart.", NamedTextColor.RED)));
+            plugin.saveConfiguration();
+        } catch (NumberFormatException e) {
+            actor.reply(Component.text("Error: not a number", NamedTextColor.RED));
+        }
+    }
 
+    /// The list is supposed to be sorted from the actual field to the root
+    private void setFieldValue(List<Pair<Object, Field>> list, Object value) throws ReflectiveOperationException {
+        Pair<Object, Field> pair = list.getFirst();
+        Object object = pair.getFirst();
+        Field field = pair.getSecond();
+        Class<?> clazz = object.getClass();
+        if (clazz.isRecord()) {
+            RecordComponent[] components = clazz.getRecordComponents();
+            Class<?>[] paramTypes = new Class[components.length];
+            Object[] args = new Object[components.length];
+            for (int i = 0; i < components.length; i++) {
+                RecordComponent c = components[i];
+                paramTypes[i] = c.getType();
+                if (c.getName().equals(field.getName())) {
+                    args[i] = value;
+                } else {
+                    Method accessor = c.getAccessor();
+                    accessor.setAccessible(true);
+                    args[i] = accessor.invoke(object);
+                }
+            }
+            Constructor<?> ctor = clazz.getConstructor(paramTypes);
+            ctor.setAccessible(true);
+            Object record = ctor.newInstance(args);
+            List<Pair<Object, Field>> newList = list.subList(1, list.size());
+            setFieldValue(newList, record);
+        } else {
+            field.setAccessible(true);
+            field.set(object, value);
+        }
     }
 
     private @NotNull TextComponent getUnpluggedDebugText(UnpluggedPlayers.PlayerEntry entry, int i) {

@@ -47,9 +47,11 @@ import de.exlll.configlib.YamlConfigurationStore;
 import de.exlll.configlib.YamlConfigurations;
 import dev.electricsteve.unpluggedPaper.api.PlayerSpawnOptions;
 import dev.electricsteve.unpluggedPaper.commands.AdminCommand;
+import dev.electricsteve.unpluggedPaper.commands.ConfigurationVariableParameterType;
 import dev.electricsteve.unpluggedPaper.commands.PlayerEntryParameterType;
 import dev.electricsteve.unpluggedPaper.commands.UnplugCommand;
 import dev.electricsteve.unpluggedPaper.commands.UnpluggedPlayerParameterType;
+import dev.electricsteve.unpluggedPaper.config.ConfigInstanceField;
 import dev.electricsteve.unpluggedPaper.config.UnpluggedConfiguration;
 import dev.electricsteve.unpluggedPaper.config.UnpluggedPlayers;
 import dev.electricsteve.unpluggedPaper.kotlin.FakePlayerPlusJava;
@@ -66,6 +68,7 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
     private final Path configFile = new File(getDataFolder(), "config.yml").toPath();
     private final Path playersFile = new File(getDataFolder(), "unplugged_players.yml").toPath();
     private YamlConfigurationStore<UnpluggedPlayers> playersConfigurationStore;
+    private YamlConfigurationStore<UnpluggedConfiguration> configurationStore;
     private final YamlConfigurationProperties configurationProperties = ConfigLib.BUKKIT_DEFAULT_PROPERTIES.toBuilder()
         .header(
             """
@@ -108,12 +111,9 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         }
 
         // Config
-        this.configuration = YamlConfigurations.update(
-            configFile,
-            UnpluggedConfiguration.class,
-            configurationProperties
-        );
+        configurationStore = new YamlConfigurationStore<>(UnpluggedConfiguration.class, configurationProperties);
         playersConfigurationStore = new YamlConfigurationStore<>(UnpluggedPlayers.class, playersConfigProperties);
+        this.configuration = configurationStore.update(configFile);
         this.unpluggedPlayersConfig = playersConfigurationStore.update(playersFile);
 
         if (this.configuration.getMain().debugMode()) debug = true;
@@ -129,6 +129,7 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
             .parameterTypes(builder -> {
                 builder.addParameterType(UnpluggedPlayers.PlayerEntry.class, new PlayerEntryParameterType(this));
                 builder.addParameterType(UnpluggedPlayer.class, new UnpluggedPlayerParameterType(this));
+                builder.addParameterType(ConfigInstanceField.class, new ConfigurationVariableParameterType(this));
             })
             .build();
         lamp.register(new UnplugCommand(this));
@@ -151,6 +152,10 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
 
     public void savePlayersConfiguration() {
         playersConfigurationStore.save(this.unpluggedPlayersConfig, playersFile);
+    }
+
+    public void saveConfiguration() {
+        configurationStore.save(this.configuration, configFile);
     }
 
     private void addBackUnpluggedPlayers() {
