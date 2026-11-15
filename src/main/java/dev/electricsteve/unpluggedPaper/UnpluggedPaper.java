@@ -47,6 +47,7 @@ import dev.electricsteve.unpluggedPaper.api.PlayerSpawnOptions;
 import dev.electricsteve.unpluggedPaper.commands.AdminCommand;
 import dev.electricsteve.unpluggedPaper.commands.PlayerEntryParameterType;
 import dev.electricsteve.unpluggedPaper.commands.UnplugCommand;
+import dev.electricsteve.unpluggedPaper.commands.UnpluggedPlayerParameterType;
 import dev.electricsteve.unpluggedPaper.config.UnpluggedConfiguration;
 import dev.electricsteve.unpluggedPaper.config.UnpluggedPlayers;
 import dev.electricsteve.unpluggedPaper.kotlin.FakePlayerPlusJava;
@@ -125,6 +126,7 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         var lamp = BukkitLamp.builder(this)
             .parameterTypes(builder -> {
                 builder.addParameterType(UnpluggedPlayers.PlayerEntry.class, new PlayerEntryParameterType(this));
+                builder.addParameterType(UnpluggedPlayer.class, new UnpluggedPlayerParameterType(this));
             })
             .build();
         lamp.register(new UnplugCommand(this));

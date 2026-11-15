@@ -27,6 +27,7 @@ import java.util.UUID;
 
 import dev.electricsteve.unpluggedPaper.UnpluggedPaper;
 import dev.electricsteve.unpluggedPaper.UnpluggedPaperApiImpl;
+import dev.electricsteve.unpluggedPaper.UnpluggedPlayer;
 import dev.electricsteve.unpluggedPaper.api.PlayerSpawnOptions;
 import dev.electricsteve.unpluggedPaper.config.UnpluggedPlayers;
 import dev.electricsteve.unpluggedPaper.kotlin.FakePlayerPlusJava;
@@ -203,13 +204,9 @@ public class AdminCommand {
     }
 
     @Subcommand("kick")
-    public void kick(BukkitCommandActor actor, String name) {
-        FakePlayer fakePlayer = plugin.getFppComponent().getFpm().get(name);
-        UnpluggedPlayers.PlayerEntry playerEntry = plugin.getPlayerEntry(name).orElse(null);
-        if (fakePlayer == null || playerEntry == null) {
-            actor.reply(Component.text("Error: no unplugged player found", NamedTextColor.RED));
-            return;
-        }
+    public void kick(BukkitCommandActor actor, UnpluggedPlayer unpluggedPlayer) {
+        FakePlayer fakePlayer = unpluggedPlayer.fakePlayer();
+        UnpluggedPlayers.PlayerEntry playerEntry = unpluggedPlayer.playerEntry();
         Component displayName = fakePlayer.getPlayer().displayName();
         actor.reply(Component.text(" - Kicking unplugged player: ", NamedTextColor.GRAY).append(displayName.color(NamedTextColor.YELLOW)));
         playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.INTERRUPTED);
