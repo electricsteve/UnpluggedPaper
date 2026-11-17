@@ -86,13 +86,8 @@ public class AdminCommand {
                 plugin.updatePlayerEntry(player.getUniqueId(), player.getName(), UnpluggedPlayers.UnpluggedStatus.INACTIVE, -1, -1, "");
             }
         }
-        actor.reply(Component.text("Purged: ", NamedTextColor.YELLOW)
-            .append(Component.text(purged, NamedTextColor.RED))
-            .append(Component.text(" players, and then resynced ", NamedTextColor.YELLOW))
-            .append(Component.text(resynced, NamedTextColor.GREEN))
-            .append(Component.text(" current players, with ", NamedTextColor.YELLOW))
-            .append(Component.text(shadows, NamedTextColor.GOLD))
-            .append(Component.text(" shadows", NamedTextColor.YELLOW)));
+        actor.reply(Component.translatable("unplugged.purge", NamedTextColor.YELLOW,
+            Component.text(purged, NamedTextColor.RED), Component.text(resynced, NamedTextColor.GREEN), Component.text(shadows, NamedTextColor.GOLD)));
     }
 
     @Subcommand("list")
@@ -106,33 +101,33 @@ public class AdminCommand {
 
     private void unpluggedMap(TextComponent.Builder finalBuilder) {
         int i = -1;
-        finalBuilder.append(Component.text("Unplugged Map:\n", NamedTextColor.LIGHT_PURPLE));
+        finalBuilder.append(Component.translatable("unplugged.map.title", NamedTextColor.LIGHT_PURPLE));
         for (UnpluggedPlayers.PlayerEntry entry : plugin.getUnpluggedPlayersConfig().getUnpluggedPlayers()) {
             if (entry.getStatus() != UnpluggedPlayers.UnpluggedStatus.ACTIVE) continue;
             i++;
             TextComponent entryText = getUnpluggedDebugText(entry, i);
             finalBuilder.append(entryText);
         }
-        finalBuilder.append(Component.text("(%s total)".formatted(i + 1), NamedTextColor.GOLD));
+        finalBuilder.append(Component.translatable("unplugged.map.total", NamedTextColor.GOLD, Component.text(i + 1)));
     }
 
     private void playerMap(TextComponent.Builder finalBuilder) {
         int i = -1;
-        finalBuilder.append(Component.text("Player Map:\n", NamedTextColor.LIGHT_PURPLE));
+        finalBuilder.append(Component.translatable("unplugged.playermap.title", NamedTextColor.LIGHT_PURPLE));
         for (UnpluggedPlayers.PlayerEntry entry : plugin.getUnpluggedPlayersConfig().getUnpluggedPlayers()) {
             i++;
             OfflinePlayer player = plugin.getServer().getOfflinePlayer(entry.getUuid());
             TextComponent entryText = getPlayerDebugText(entry, i, player);
             finalBuilder.append(entryText);
         }
-        finalBuilder.append(Component.text("(%s total)".formatted(i + 1), NamedTextColor.GOLD));
+        finalBuilder.append(Component.translatable("unplugged.map.total", NamedTextColor.GOLD, Component.text(i + 1)));
     }
 
     @Subcommand("info")
     public void info(BukkitCommandActor actor, @Default("me") OfflinePlayer target) {
         Optional<UnpluggedPlayers.PlayerEntry> optionalPlayerEntry = plugin.getPlayerEntry(target.getUniqueId());
         if (optionalPlayerEntry.isEmpty()) {
-            actor.reply(Component.text("Error: player not in player map", NamedTextColor.RED));
+            actor.reply(Component.translatable("unplugged.info.error", NamedTextColor.RED));
             return;
         }
         actor.reply(Component.text("\n").append(getPlayerDebugText(optionalPlayerEntry.get(), -1, target)));
@@ -147,15 +142,15 @@ public class AdminCommand {
         long durationMillis = durationMinutes * 60L * 1000L;
         OfflinePlayer offlinePlayer = plugin.getServer().getOfflinePlayer(uuid);
         if (offlinePlayer.isOnline()) {
-            actor.reply(Component.text("Error: player is online", NamedTextColor.RED));
+            actor.reply(Component.translatable("unplugged.spawn.error.online", NamedTextColor.RED));
             return;
         } else if (offlinePlayer.isBanned()) {
-            actor.reply(Component.text("Error: player is banned", NamedTextColor.RED));
+            actor.reply(Component.translatable("unplugged.spawn.error.banned", NamedTextColor.RED));
             return;
         }
         Location location = offlinePlayer.getLocation();
         if (location == null) {
-            actor.reply(Component.text("Error: no location found", NamedTextColor.RED));
+            actor.reply(Component.translatable("unplugged.spawn.error.location", NamedTextColor.RED));
             return;
         }
         double health = 20.0; // TODO: fix this, currently waiting on response from paper devs (https://discord.com/channels/289587909051416579/925530366192779286/1566422373270421515)
@@ -202,15 +197,14 @@ public class AdminCommand {
                         entry.setReason(MiniMessage.miniMessage().serialize(
                             Component.text()
                                 .append(plugin.getConfiguration().getMessages().displayDuration() ?
-                                    Component.text("Your ", NamedTextColor.YELLOW).append(formatTimeDifference(durationMillis))
-                                        .append(Component.text("Session was successful.", NamedTextColor.YELLOW))
-                                    : Component.text("Your session was successful."))
-                                .append(Component.text("\n - For: ", NamedTextColor.GRAY))
-                                .append(Component.text("Timeout expired", NamedTextColor.YELLOW))
+                                    Component.translatable("unplugged.feedback.successful.time", NamedTextColor.YELLOW, formatTimeDifference(durationMillis))
+                                    : Component.translatable("unplugged.feedback.successful", NamedTextColor.YELLOW))
+                                .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
+                                    Component.translatable("unplugged.feedback.expired", NamedTextColor.YELLOW)))
                                 .build()
                         ));
                     });
-                    plugin.broadcastPlugBack(Component.text(name), " AFK session expired", System.currentTimeMillis() - playerEntry.getStartTime());
+                    plugin.broadcastPlugBack(Component.text(name), "unplugged.broadcast.expired", System.currentTimeMillis() - playerEntry.getStartTime());
                     plugin.savePlayersConfiguration();
                 })
                 .hidePlayer(plugin.getConfiguration().getUnplugged().unpluggedHidePlayer())
@@ -218,10 +212,11 @@ public class AdminCommand {
                 .build();
             UnpluggedPaperApiImpl.spawnPlayerWithUuidAndSkin(name, plugin, options);
 
-            Component broadcast = Component.text(name, NamedTextColor.YELLOW).append(Component.text(" has been unplugged", NamedTextColor.YELLOW));
-            if (!reason.isEmpty())
-                broadcast = broadcast.append(Component.text(", ", NamedTextColor.YELLOW)).append(Component.text(reason, NamedTextColor.WHITE));
-            this.plugin.broadcast(broadcast);
+            Component displayName = Component.text(name);
+            Component broadcast = reason.isEmpty() ?
+                Component.translatable("unplugged.broadcast.unplugged", NamedTextColor.YELLOW, displayName)
+                : Component.translatable("unplugged.broadcast.unplugged.reason", NamedTextColor.YELLOW, displayName, Component.text(reason, NamedTextColor.WHITE));
+            plugin.broadcast(broadcast);
         });
     }
 
@@ -230,17 +225,18 @@ public class AdminCommand {
         FakePlayer fakePlayer = unpluggedPlayer.fakePlayer();
         UnpluggedPlayers.PlayerEntry playerEntry = unpluggedPlayer.playerEntry();
         Component displayName = fakePlayer.getPlayer().displayName();
-        actor.reply(Component.text(" - Kicking unplugged player: ", NamedTextColor.GRAY).append(displayName.color(NamedTextColor.YELLOW)));
+        actor.reply(Component.translatable("unplugged.kick", NamedTextColor.GRAY, displayName));
         playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.INTERRUPTED);
         playerEntry.setReason(MiniMessage.miniMessage().serialize(
-            Component.text("Your AFK session was interrupted", NamedTextColor.YELLOW)
+            Component.text()
                 .append(plugin.getConfiguration().getMessages().displayDuration() ?
-                    Component.text(" after: ", NamedTextColor.YELLOW).append(formatTimeDifference(System.currentTimeMillis() - playerEntry.getStartTime()))
-                    : Component.text(""))
-                .append(Component.text("\n - For: ", NamedTextColor.GRAY))
-                .append(Component.text("AFK session ended by an admin", NamedTextColor.RED))
+                    Component.translatable("unplugged.feedback.interrupted.time", NamedTextColor.YELLOW, formatTimeDifference(System.currentTimeMillis() - playerEntry.getStartTime()))
+                    : Component.translatable("unplugged.feedback.interrupted", NamedTextColor.YELLOW))
+                .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
+                    Component.translatable("unplugged.feedback.kick", NamedTextColor.RED)))
+                .build()
         ));
-        plugin.broadcastPlugBack(displayName.color(NamedTextColor.YELLOW), " AFK session terminated", System.currentTimeMillis() - playerEntry.getStartTime());
+        plugin.broadcastPlugBack(displayName, "unplugged.broadcast.terminated", System.currentTimeMillis() - playerEntry.getStartTime());
         plugin.savePlayersConfiguration();
         fakePlayer.quit("The unplugged session was terminated by an admin.");
     }
@@ -249,7 +245,7 @@ public class AdminCommand {
     public void save(BukkitCommandActor actor) {
         plugin.saveConfiguration();
         plugin.savePlayersConfiguration();
-        actor.reply(Component.text("Saved configuration files!", NamedTextColor.GREEN));
+        actor.reply(Component.translatable("unplugged.save", NamedTextColor.GREEN));
     }
 
     @Subcommand("set")
@@ -266,7 +262,7 @@ public class AdminCommand {
                 } else if (value.equalsIgnoreCase("false")) {
                     parsedValue = false;
                 } else {
-                    actor.reply(Component.text("Invalid boolean! Use either 'true' or 'false'", NamedTextColor.RED));
+                    actor.reply(Component.translatable("unplugged.set.error.boolean", NamedTextColor.RED));
                     return;
                 }
             } else if (fieldType == long.class || fieldType == Long.class) {
@@ -287,24 +283,26 @@ public class AdminCommand {
                     }
                 }
                 if (!found) {
-                    actor.reply(Component.text("Invalid option! Valid options are: " + Arrays.toString(fieldType.getEnumConstants()), NamedTextColor.RED));
+                    actor.reply(Component.translatable("unplugged.set.error.enum", NamedTextColor.RED,
+                        Component.text(Arrays.toString(fieldType.getEnumConstants()))));
                     return;
                 }
             }
             if (parsedValue == null) {
-                actor.reply("Unsupported type for config field");
+                actor.reply(Component.translatable("unplugged.set.error.type", NamedTextColor.RED));
                 return;
             }
             try {
                 setFieldValue(configInstanceField.list(), parsedValue);
             } catch (ReflectiveOperationException e) {
-                actor.reply(Component.text("Error setting that config variable. (check server logs)", NamedTextColor.RED));
+                actor.reply(Component.translatable("unplugged.set.error.reflection", NamedTextColor.RED));
             }
-            actor.reply(Component.text("Config: '" + field.getName() + "' updated to " + value + ".", NamedTextColor.GREEN)
-                .append(Component.text("\nNOTE: Some settings may require a server restart.", NamedTextColor.RED)));
+            actor.reply(Component.translatable("unplugged.set.success", NamedTextColor.GREEN,
+                    Component.text(field.getName()), Component.text(value))
+                .append(Component.translatable("unplugged.set.note", NamedTextColor.RED)));
             plugin.saveConfiguration();
         } catch (NumberFormatException e) {
-            actor.reply(Component.text("Error: not a number", NamedTextColor.RED));
+            actor.reply(Component.translatable("unplugged.set.error.number", NamedTextColor.RED));
         }
     }
 
@@ -314,12 +312,11 @@ public class AdminCommand {
         try {
             pair.getSecond().setAccessible(true);
             String value = pair.getSecond().get(pair.getFirst()).toString();
-            actor.reply(Component.text("The value of ")
-                .append(Component.text(instanceField.input(), NamedTextColor.LIGHT_PURPLE))
-                .append(Component.text(" is "))
-                .append(Component.text(value, NamedTextColor.GOLD)));
+            actor.reply(Component.translatable("unplugged.get.success",
+                Component.text(instanceField.input(), NamedTextColor.LIGHT_PURPLE),
+                Component.text(value, NamedTextColor.GOLD)));
         } catch (IllegalAccessException e) {
-            actor.reply(Component.text("An error occurred getting this config value.", NamedTextColor.RED));
+            actor.reply(Component.translatable("unplugged.get.error", NamedTextColor.RED));
         }
     }
 
@@ -358,7 +355,7 @@ public class AdminCommand {
     private @NotNull TextComponent getUnpluggedDebugText(UnpluggedPlayers.PlayerEntry entry, int i) {
         // We assume this is an active session
         TextComponent.Builder builder = Component.text();
-        builder.append(Component.text("[Entry: %s]\n".formatted(String.format("%02d", i)), NamedTextColor.BLUE));
+        builder.append(Component.translatable("unplugged.debug.entry", NamedTextColor.BLUE, Component.text(String.format("%02d", i))));
         builder.append(detailLine("Name", entry.getName(), NamedTextColor.WHITE));
         builder.append(detailLine("UUID", entry.getUuid().toString(), NamedTextColor.WHITE));
         builder.append(detailLine("Status", entry.getStatus().getName(), NamedTextColor.GREEN));
@@ -408,9 +405,9 @@ public class AdminCommand {
 
         TextComponent.Builder builder = Component.text();
         if (i >= 0) {
-            builder.append(Component.text("[Entry: %s]\n".formatted(String.format("%02d", i)), NamedTextColor.BLUE));
+            builder.append(Component.translatable("unplugged.debug.entry", NamedTextColor.BLUE, Component.text(String.format("%02d", i))));
         } else {
-            builder.append(Component.text("Player Info:\n", NamedTextColor.BLUE));
+            builder.append(Component.translatable("unplugged.debug.info", NamedTextColor.BLUE));
         }
         builder.append(detailLine("Name", entry.getName(), NamedTextColor.WHITE));
         builder.append(detailLine("UUID", entry.getUuid().toString(), NamedTextColor.WHITE));

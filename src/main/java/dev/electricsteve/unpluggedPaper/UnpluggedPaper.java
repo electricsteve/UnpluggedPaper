@@ -9,9 +9,12 @@ import com.coderxi.plugin.fakeplayer.api.model.PlayerTextures;
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.ProfileProperty;
 
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.translation.GlobalTranslator;
+import net.kyori.adventure.translation.TranslationStore;
 
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.logging.log4j.LogManager;
@@ -34,9 +37,12 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.text.MessageFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.UUID;
 
@@ -122,6 +128,11 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
             return;
         }
 
+        TranslationStore.StringBased<MessageFormat> store = TranslationStore.messageFormat(Key.key("unplugged-paper", "translations"));
+        ResourceBundle bundle = ResourceBundle.getBundle("translations.Bundle", Locale.US);
+        store.registerAll(Locale.US, bundle, true);
+        GlobalTranslator.translator().addSource(store);
+
         // Initialize fpp component and commands
         this.fppComponent = new UnpluggedFppComponent();
         FakePlayerPlusPluginApi.Companion.getApi().registerComponent(fppComponent);
@@ -172,14 +183,13 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                     playerEntry.setReason(MiniMessage.miniMessage().serialize(
                         Component.text()
                             .append(this.configuration.getMessages().displayDuration() ?
-                                Component.text("Your ", NamedTextColor.YELLOW).append(formatTimeDifference(playerEntry.getTime()))
-                                    .append(Component.text("Session was successful.", NamedTextColor.YELLOW))
-                                : Component.text("Your session was successful."))
-                            .append(Component.text("\n - For: ", NamedTextColor.GRAY))
-                            .append(Component.text("Timeout expired", NamedTextColor.YELLOW))
+                                Component.translatable("unplugged.feedback.successful.time", NamedTextColor.YELLOW, formatTimeDifference(playerEntry.getTime()))
+                                : Component.translatable("unplugged.feedback.successful", NamedTextColor.YELLOW))
+                            .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
+                                Component.translatable("unplugged.feedback.expired", NamedTextColor.YELLOW)))
                             .build()
                     ));
-                    this.broadcastPlugBack(Component.text(name), " AFK session expired", playerEntry.getTime());
+                    this.broadcastPlugBack(Component.text(name), "unplugged.broadcast.expired", playerEntry.getTime());
                     this.savePlayersConfiguration();
                     return;
                 }
@@ -191,14 +201,15 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                     debugLog("Not spawning player {} because they were either banned or a player with this UUID is already online.", uuid);
                     playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.TERMINATED);
                     playerEntry.setReason(MiniMessage.miniMessage().serialize(
-                        Component.text("Your AFK session was interrupted", NamedTextColor.YELLOW)
+                        Component.text()
                             .append(this.configuration.getMessages().displayDuration() ?
-                                Component.text(" after: ", NamedTextColor.YELLOW).append(formatTimeDifference(durationHadMillis))
-                                : Component.text(""))
-                            .append(Component.text("\n - For: ", NamedTextColor.GRAY))
-                            .append(Component.text("AFK session terminated", NamedTextColor.RED))
+                                Component.translatable("unplugged.feedback.interrupted.time", NamedTextColor.YELLOW, formatTimeDifference(durationHadMillis))
+                                : Component.translatable("unplugged.feedback.interrupted", NamedTextColor.YELLOW))
+                            .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
+                                Component.translatable("unplugged.feedback.terminated", NamedTextColor.RED)))
+                            .build()
                     ));
-                    broadcastPlugBack(Component.text(playerEntry.getName()), " AFK session terminated", durationHadMillis);
+                    broadcastPlugBack(Component.text(playerEntry.getName()), "unplugged.broadcast.terminated", durationHadMillis);
                     savePlayersConfiguration();
                     continue;
                 }
@@ -245,15 +256,14 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                                 entry.setReason(MiniMessage.miniMessage().serialize(
                                     Component.text()
                                         .append(this.configuration.getMessages().displayDuration() ?
-                                            Component.text("Your ", NamedTextColor.YELLOW).append(formatTimeDifference(playerEntry.getTime()))
-                                                .append(Component.text("Session was successful.", NamedTextColor.YELLOW))
-                                            : Component.text("Your session was successful."))
-                                        .append(Component.text("\n - For: ", NamedTextColor.GRAY))
-                                        .append(Component.text("Timeout expired", NamedTextColor.YELLOW))
+                                            Component.translatable("unplugged.feedback.successful.time", NamedTextColor.YELLOW, formatTimeDifference(playerEntry.getTime()))
+                                            : Component.translatable("unplugged.feedback.successful", NamedTextColor.YELLOW))
+                                        .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
+                                            Component.translatable("unplugged.feedback.expired", NamedTextColor.YELLOW)))
                                         .build()
                                 ));
                             });
-                            this.broadcastPlugBack(Component.text(name), " AFK session expired", System.currentTimeMillis() - playerEntry.getStartTime());
+                            this.broadcastPlugBack(Component.text(name), "unplugged.broadcast.expired", System.currentTimeMillis() - playerEntry.getStartTime());
                             this.savePlayersConfiguration();
                         })
                         .hidePlayer(this.configuration.getUnplugged().unpluggedHidePlayer())
@@ -306,14 +316,15 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                 if (!playerEntry.getStatus().equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE)) return;
                 playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.RETURNED);
                 playerEntry.setReason(MiniMessage.miniMessage().serialize(
-                    Component.text("Your AFK session was interrupted", NamedTextColor.YELLOW)
+                    Component.text()
                         .append(this.configuration.getMessages().displayDuration() ?
-                            Component.text(" after: ", NamedTextColor.YELLOW).append(formatTimeDifference(System.currentTimeMillis() - playerEntry.getStartTime()))
-                            : Component.text(""))
-                        .append(Component.text("\n - For: ", NamedTextColor.GRAY))
-                        .append(Component.text("Replaced by player", NamedTextColor.GOLD))
+                            Component.translatable("unplugged.feedback.interrupted.time", NamedTextColor.YELLOW, formatTimeDifference(System.currentTimeMillis() - playerEntry.getStartTime()))
+                            : Component.translatable("unplugged.feedback.interrupted", NamedTextColor.YELLOW))
+                        .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
+                            Component.translatable("unplugged.feedback.replaced", NamedTextColor.RED)))
+                        .build()
                 ));
-                broadcastPlugBack(event.getPlayer().displayName(), " has returned", System.currentTimeMillis() - playerEntry.getStartTime());
+                broadcastPlugBack(event.getPlayer().displayName(), "unplugged.broadcast.replaced", System.currentTimeMillis() - playerEntry.getStartTime());
                 savePlayersConfiguration();
                 if (configuration.getMessages().hideUnpluggedJoin()) event.leaveMessage(null);
             }
@@ -352,14 +363,15 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                 long durationHadMillis = System.currentTimeMillis() - playerEntry.getStartTime();
                 playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.TERMINATED);
                 playerEntry.setReason(MiniMessage.miniMessage().serialize(
-                    Component.text("Your AFK session was interrupted", NamedTextColor.YELLOW)
+                    Component.text()
                         .append(this.configuration.getMessages().displayDuration() ?
-                            Component.text(" after: ", NamedTextColor.YELLOW).append(formatTimeDifference(durationHadMillis))
-                            : Component.text(""))
-                        .append(Component.text("\n - For: ", NamedTextColor.GRAY))
-                        .append(Component.text("AFK session terminated", NamedTextColor.RED))
+                            Component.translatable("unplugged.feedback.interrupted.time", NamedTextColor.YELLOW, formatTimeDifference(durationHadMillis))
+                            : Component.translatable("unplugged.feedback.interrupted", NamedTextColor.YELLOW))
+                        .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
+                            Component.translatable("unplugged.feedback.terminated", NamedTextColor.RED)))
+                        .build()
                 ));
-                broadcastPlugBack(player.displayName(), " AFK session terminated", System.currentTimeMillis() - playerEntry.getStartTime());
+                broadcastPlugBack(player.displayName(), "unplugged.broadcast.terminated", System.currentTimeMillis() - playerEntry.getStartTime());
                 savePlayersConfiguration();
             }
         }
@@ -417,13 +429,12 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         savePlayersConfiguration();
     }
 
-    public void broadcastPlugBack(Component playerComponent, String reasonString, long durationMillis) {
-        Component c = playerComponent.color(NamedTextColor.YELLOW).append(Component.text(reasonString, NamedTextColor.YELLOW));
+    public void broadcastPlugBack(Component playerComponent, String reasonTranslation, long durationMillis) {
+        Component c = Component.translatable(reasonTranslation, NamedTextColor.YELLOW, playerComponent);
         @SuppressWarnings("SpellCheckingInspection") // Don't spell check format string
         String durationString = DurationFormatUtils.formatDuration(durationMillis, "[d'd'H'h'm'm's's']", true);
         if (configuration.getMessages().displayDuration()) c =
-            c.append(Component.text(" (Gone for: ", NamedTextColor.GRAY))
-                .append(Component.text(durationString, NamedTextColor.GREEN)).append(Component.text(")", NamedTextColor.GRAY));
+            c.append(Component.translatable("unplugged.broadcast.time", NamedTextColor.GRAY, Component.text(durationString, NamedTextColor.GREEN)));
         broadcast(c);
     }
 

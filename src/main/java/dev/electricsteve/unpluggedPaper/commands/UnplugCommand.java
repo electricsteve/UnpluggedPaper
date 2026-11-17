@@ -66,7 +66,7 @@ public class UnplugCommand {
             return;
         }
         if (durationMinutes == 0)
-            durationMinutes = this.plugin.getConfiguration().getUnplugged().defaultUnpluggedTimeout();
+            durationMinutes = plugin.getConfiguration().getUnplugged().defaultUnpluggedTimeout();
         long durationMillis = durationMinutes * 60L * 1000L;
         World world = player.getWorld();
         String name = player.getName();
@@ -82,13 +82,12 @@ public class UnplugCommand {
 
         // We do it here, because the kick event listener needs it to detect if a player was kicked for unplugging
         long startTime = System.currentTimeMillis();
-        this.plugin.updatePlayerEntry(uuid, name, UnpluggedPlayers.UnpluggedStatus.ACTIVE, durationMillis, startTime, reason);
-        player.kick(Component.text("Your player will be AFK for: ", NamedTextColor.GOLD)
-            .append(formatTimeDifference(durationMillis)));
+        plugin.updatePlayerEntry(uuid, name, UnpluggedPlayers.UnpluggedStatus.ACTIVE, durationMillis, startTime, reason);
+        player.kick(Component.translatable("unplugged.kickMessage", NamedTextColor.GOLD, formatTimeDifference(durationMillis)));
         // We have to delay this, because there seems some kind of race condition where the fake player is in a "ghost" state,
         // where it is as if the player is connected but no packets are being sent.
-        Bukkit.getScheduler().runTaskLater(this.plugin, _ -> {
-            FakePlayerManager fpm = this.plugin.getFppComponent().getFpm();
+        Bukkit.getScheduler().runTaskLater(plugin, _ -> {
+            FakePlayerManager fpm = plugin.getFppComponent().getFpm();
             FakePlayerPlusJava.getFromRepository(fpm, name).thenAccept(fakePlayerInRepository -> {
                 if (fakePlayerInRepository != null) {
                     UUID existingUuid = fakePlayerInRepository.getUuid();
@@ -112,31 +111,30 @@ public class UnplugCommand {
                     .enableAdvancements(true)
                     .durationMillis(durationMillis)
                     .durationOverCallback(_ -> {
-                        this.plugin.getPlayerEntry(uuid).ifPresent(playerEntry -> {
+                        plugin.getPlayerEntry(uuid).ifPresent(playerEntry -> {
                             playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED);
                             playerEntry.setReason(MiniMessage.miniMessage().serialize(
                                 Component.text()
                                     .append(plugin.getConfiguration().getMessages().displayDuration() ?
-                                        Component.text("Your ", NamedTextColor.YELLOW).append(formatTimeDifference(durationMillis))
-                                            .append(Component.text("Session was successful.", NamedTextColor.YELLOW))
-                                        : Component.text("Your session was successful."))
-                                    .append(Component.text("\n - For: ", NamedTextColor.GRAY))
-                                    .append(Component.text("Timeout expired", NamedTextColor.YELLOW))
+                                        Component.translatable("unplugged.feedback.successful.time", NamedTextColor.YELLOW, formatTimeDifference(durationMillis))
+                                        : Component.translatable("unplugged.feedback.successful", NamedTextColor.YELLOW))
+                                    .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
+                                        Component.translatable("unplugged.feedback.expired", NamedTextColor.YELLOW)))
                                     .build()
                             ));
                         });
-                        this.plugin.broadcastPlugBack(displayName.color(NamedTextColor.YELLOW), " AFK session expired", System.currentTimeMillis() - startTime);
-                        this.plugin.savePlayersConfiguration();
+                        plugin.broadcastPlugBack(displayName, "unplugged.broadcast.expired", System.currentTimeMillis() - startTime);
+                        plugin.savePlayersConfiguration();
                     })
-                    .hidePlayer(this.plugin.getConfiguration().getUnplugged().unpluggedHidePlayer())
-                    .hidePlayerOps(this.plugin.getConfiguration().getUnplugged().unpluggedHideFromOps())
+                    .hidePlayer(plugin.getConfiguration().getUnplugged().unpluggedHidePlayer())
+                    .hidePlayerOps(plugin.getConfiguration().getUnplugged().unpluggedHideFromOps())
                     .build();
                 UnpluggedPaperApiImpl.spawnPlayerWithUuidAndSkin(name, plugin, options);
 
-                Component broadcast = displayName.color(NamedTextColor.YELLOW).append(Component.text(" has been unplugged", NamedTextColor.YELLOW));
-                if (!reason.isEmpty())
-                    broadcast = broadcast.append(Component.text(", ", NamedTextColor.YELLOW)).append(Component.text(reason, NamedTextColor.WHITE));
-                this.plugin.broadcast(broadcast);
+                Component broadcast = reason.isEmpty() ?
+                    Component.translatable("unplugged.broadcast.unplugged", NamedTextColor.YELLOW, displayName)
+                    : Component.translatable("unplugged.broadcast.unplugged.reason", NamedTextColor.YELLOW, displayName, Component.text(reason, NamedTextColor.WHITE));
+                plugin.broadcast(broadcast);
             });
         }, 10); // We wait 10 ticks, this was increased because the fake player was sometimes summoned before the real player left
     }
