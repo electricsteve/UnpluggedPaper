@@ -192,18 +192,7 @@ public class AdminCommand {
                 .enableAdvancements(true)
                 .durationMillis(durationMillis)
                 .durationOverCallback(_ -> {
-                    this.plugin.getPlayerEntry(uuid).ifPresent(entry -> {
-                        entry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED);
-                        entry.setReason(MiniMessage.miniMessage().serialize(
-                            Component.text()
-                                .append(plugin.getConfiguration().getMessages().displayDuration() ?
-                                    Component.translatable("unplugged.feedback.successful.time", NamedTextColor.YELLOW, formatTimeDifference(durationMillis))
-                                    : Component.translatable("unplugged.feedback.successful", NamedTextColor.YELLOW))
-                                .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
-                                    Component.translatable("unplugged.feedback.expired", NamedTextColor.YELLOW)))
-                                .build()
-                        ));
-                    });
+                    plugin.expired(uuid, durationMillis);
                     plugin.broadcastPlugBack(Component.text(name), "unplugged.broadcast.expired", System.currentTimeMillis() - playerEntry.getStartTime());
                     plugin.savePlayersConfiguration();
                 })

@@ -111,18 +111,7 @@ public class UnplugCommand {
                     .enableAdvancements(true)
                     .durationMillis(durationMillis)
                     .durationOverCallback(_ -> {
-                        plugin.getPlayerEntry(uuid).ifPresent(playerEntry -> {
-                            playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED);
-                            playerEntry.setReason(MiniMessage.miniMessage().serialize(
-                                Component.text()
-                                    .append(plugin.getConfiguration().getMessages().displayDuration() ?
-                                        Component.translatable("unplugged.feedback.successful.time", NamedTextColor.YELLOW, formatTimeDifference(durationMillis))
-                                        : Component.translatable("unplugged.feedback.successful", NamedTextColor.YELLOW))
-                                    .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
-                                        Component.translatable("unplugged.feedback.expired", NamedTextColor.YELLOW)))
-                                    .build()
-                            ));
-                        });
+                        plugin.expired(uuid, durationMillis);
                         plugin.broadcastPlugBack(displayName, "unplugged.broadcast.expired", System.currentTimeMillis() - startTime);
                         plugin.savePlayersConfiguration();
                     })

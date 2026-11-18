@@ -179,16 +179,7 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                 String name = playerEntry.getName();
                 UUID uuid = playerEntry.getUuid();
                 if (endTime <= currentTimeMillis) {
-                    playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED);
-                    playerEntry.setReason(MiniMessage.miniMessage().serialize(
-                        Component.text()
-                            .append(this.configuration.getMessages().displayDuration() ?
-                                Component.translatable("unplugged.feedback.successful.time", NamedTextColor.YELLOW, formatTimeDifference(playerEntry.getTime()))
-                                : Component.translatable("unplugged.feedback.successful", NamedTextColor.YELLOW))
-                            .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
-                                Component.translatable("unplugged.feedback.expired", NamedTextColor.YELLOW)))
-                            .build()
-                    ));
+                    expired(uuid, playerEntry.getTime());
                     this.broadcastPlugBack(Component.text(name), "unplugged.broadcast.expired", playerEntry.getTime());
                     this.savePlayersConfiguration();
                     return;
@@ -199,16 +190,7 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                 OfflinePlayer offlinePlayer = this.getServer().getOfflinePlayer(uuid);
                 if (offlinePlayer.isOnline() || offlinePlayer.isBanned()) {
                     debugLog("Not spawning player {} because they were either banned or a player with this UUID is already online.", uuid);
-                    playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.TERMINATED);
-                    playerEntry.setReason(MiniMessage.miniMessage().serialize(
-                        Component.text()
-                            .append(this.configuration.getMessages().displayDuration() ?
-                                Component.translatable("unplugged.feedback.interrupted.time", NamedTextColor.YELLOW, formatTimeDifference(durationHadMillis))
-                                : Component.translatable("unplugged.feedback.interrupted", NamedTextColor.YELLOW))
-                            .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
-                                Component.translatable("unplugged.feedback.terminated", NamedTextColor.RED)))
-                            .build()
-                    ));
+                    terminated(playerEntry, durationHadMillis);
                     broadcastPlugBack(Component.text(playerEntry.getName()), "unplugged.broadcast.terminated", durationHadMillis);
                     savePlayersConfiguration();
                     continue;
@@ -251,18 +233,7 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                         .enableAdvancements(true)
                         .durationMillis(durationLeftMillis)
                         .durationOverCallback(_ -> {
-                            this.getPlayerEntry(uuid).ifPresent(entry -> {
-                                entry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED);
-                                entry.setReason(MiniMessage.miniMessage().serialize(
-                                    Component.text()
-                                        .append(this.configuration.getMessages().displayDuration() ?
-                                            Component.translatable("unplugged.feedback.successful.time", NamedTextColor.YELLOW, formatTimeDifference(playerEntry.getTime()))
-                                            : Component.translatable("unplugged.feedback.successful", NamedTextColor.YELLOW))
-                                        .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
-                                            Component.translatable("unplugged.feedback.expired", NamedTextColor.YELLOW)))
-                                        .build()
-                                ));
-                            });
+                            this.expired(uuid, playerEntry.getTime());
                             this.broadcastPlugBack(Component.text(name), "unplugged.broadcast.expired", System.currentTimeMillis() - playerEntry.getStartTime());
                             this.savePlayersConfiguration();
                         })
@@ -361,16 +332,7 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                     event.setCancelled(true);
                 }
                 long durationHadMillis = System.currentTimeMillis() - playerEntry.getStartTime();
-                playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.TERMINATED);
-                playerEntry.setReason(MiniMessage.miniMessage().serialize(
-                    Component.text()
-                        .append(this.configuration.getMessages().displayDuration() ?
-                            Component.translatable("unplugged.feedback.interrupted.time", NamedTextColor.YELLOW, formatTimeDifference(durationHadMillis))
-                            : Component.translatable("unplugged.feedback.interrupted", NamedTextColor.YELLOW))
-                        .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
-                            Component.translatable("unplugged.feedback.terminated", NamedTextColor.RED)))
-                        .build()
-                ));
+                terminated(playerEntry, durationHadMillis);
                 broadcastPlugBack(player.displayName(), "unplugged.broadcast.terminated", System.currentTimeMillis() - playerEntry.getStartTime());
                 savePlayersConfiguration();
             }
@@ -441,5 +403,33 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
     public void broadcast(Component component) {
         if (!configuration.getMessages().broadcastMessages() || configuration.getUnplugged().unpluggedHidePlayer()) return;
         this.getServer().broadcast(component);
+    }
+
+    public void expired(UUID uuid, long durationMillis) {
+        this.getPlayerEntry(uuid).ifPresent(entry -> {
+            entry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED);
+            entry.setReason(MiniMessage.miniMessage().serialize(
+                Component.text()
+                    .append(this.configuration.getMessages().displayDuration() ?
+                        Component.translatable("unplugged.feedback.successful.time", NamedTextColor.YELLOW, formatTimeDifference(durationMillis))
+                        : Component.translatable("unplugged.feedback.successful", NamedTextColor.YELLOW))
+                    .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
+                        Component.translatable("unplugged.feedback.expired", NamedTextColor.YELLOW)))
+                    .build()
+            ));
+        });
+    }
+
+    private void terminated(UnpluggedPlayers.PlayerEntry playerEntry, long durationHadMillis) {
+        playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.TERMINATED);
+        playerEntry.setReason(MiniMessage.miniMessage().serialize(
+            Component.text()
+                .append(this.configuration.getMessages().displayDuration() ?
+                    Component.translatable("unplugged.feedback.interrupted.time", NamedTextColor.YELLOW, formatTimeDifference(durationHadMillis))
+                    : Component.translatable("unplugged.feedback.interrupted", NamedTextColor.YELLOW))
+                .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
+                    Component.translatable("unplugged.feedback.terminated", NamedTextColor.RED)))
+                .build()
+        ));
     }
 }
