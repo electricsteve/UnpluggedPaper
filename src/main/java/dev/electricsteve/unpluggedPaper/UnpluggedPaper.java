@@ -68,7 +68,7 @@ import revxrsal.commands.bukkit.BukkitLamp;
 public final class UnpluggedPaper extends JavaPlugin implements Listener {
     private static final String REQUIRED_FPP_VERSION = "2.2.51";
 
-    public static Logger LOGGER = LogManager.getLogger("UnpluggedPaper");
+    public static final Logger LOGGER = LogManager.getLogger("UnpluggedPaper");
     private static boolean debug = Boolean.getBoolean("unplugged.debug"); // Set by command-line argument
 
     private final Path configFile = new File(getDataFolder(), "config.yml").toPath();

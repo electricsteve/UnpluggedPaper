@@ -6,6 +6,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import dev.electricsteve.unpluggedPaper.api.PlayerSpawnOptions;
@@ -41,7 +42,9 @@ public class UnpluggedPaperApiImpl {
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
-                FakePlayerPlusJava.saveSkin(fpm, fakePlayer);
+                try {
+                    FakePlayerPlusJava.saveSkin(fpm, fakePlayer).get();
+                } catch (InterruptedException | ExecutionException _) {}
             }
 
             if (options.isHidePlayer()) plugin.getServer().getOnlinePlayers().stream()

@@ -9,6 +9,7 @@ import java.util.UUID;
 import de.exlll.configlib.Configuration;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @SuppressWarnings("FieldMayBeFinal")
@@ -28,6 +29,7 @@ public class UnpluggedPlayers {
     @AllArgsConstructor
     @Configuration
     @NotNullByDefault
+    @NoArgsConstructor
     public static class PlayerEntry {
         private UUID uuid;
         private String name;
@@ -35,12 +37,6 @@ public class UnpluggedPlayers {
         private long time;
         private long startTime;
         private String reason;
-
-        // Have to have a no-args constructor for configlib to not error
-        /// DO NOT CALL THIS
-        public PlayerEntry() {
-            this.uuid = UUID.randomUUID();
-        }
 
         public void reset() {
             status = UnpluggedStatus.INACTIVE;
