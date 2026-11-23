@@ -41,7 +41,7 @@ Full feature difference list:
 - `/unplugged-admin` command only half implemented
   - `reload` implemented, shouldn't really be different
   - `list` implemented, but format is slightly different
-  - `purge` implemented, but doesn't add entries for online players back yet
+  - `purge` implemented, shouldn't really be different
   - `info` implemented, but format just as different as list
   - `spawn`, `kick`, `save` and `set` are not implemented yet
 
@@ -49,7 +49,7 @@ Full feature difference list:
 
 To install this, you first need to set up a [Paper](https://papermc.io/software/paper/) server. Follow those instructions first.
 When you have done that, you need to obtain 2 jars, the Unplugged Paper one, and a FakePlayerPlus one.
-To obtain these, there are 2 options: build yourself, or download from the github releases.
+To obtain these, there are 2 options: build yourself, or download from the GitHub releases.
 
 ### GitHub Releases
 

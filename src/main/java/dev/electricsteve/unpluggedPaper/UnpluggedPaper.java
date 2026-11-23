@@ -1,6 +1,7 @@
 package dev.electricsteve.unpluggedPaper;
 
 import static dev.electricsteve.unpluggedPaper.commands.UnplugCommand.DEFAULT_FAKE_PLAYER_SETTINGS;
+import static dev.electricsteve.unpluggedPaper.commands.UnplugCommand.formatTimeDifference;
 
 import com.coderxi.plugin.fakeplayer.api.FakePlayerPlusPluginApi;
 import com.coderxi.plugin.fakeplayer.api.manager.FakePlayerManager;
@@ -8,8 +9,12 @@ import com.coderxi.plugin.fakeplayer.api.model.PlayerTextures;
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.ProfileProperty;
 
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.translation.GlobalTranslator;
+import net.kyori.adventure.translation.TranslationStore;
 
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.logging.log4j.LogManager;
@@ -28,12 +33,16 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.text.MessageFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.UUID;
 
@@ -44,7 +53,11 @@ import de.exlll.configlib.YamlConfigurationStore;
 import de.exlll.configlib.YamlConfigurations;
 import dev.electricsteve.unpluggedPaper.api.PlayerSpawnOptions;
 import dev.electricsteve.unpluggedPaper.commands.AdminCommand;
+import dev.electricsteve.unpluggedPaper.commands.ConfigurationVariableParameterType;
+import dev.electricsteve.unpluggedPaper.commands.PlayerEntryParameterType;
 import dev.electricsteve.unpluggedPaper.commands.UnplugCommand;
+import dev.electricsteve.unpluggedPaper.commands.UnpluggedPlayerParameterType;
+import dev.electricsteve.unpluggedPaper.config.ConfigInstanceField;
 import dev.electricsteve.unpluggedPaper.config.UnpluggedConfiguration;
 import dev.electricsteve.unpluggedPaper.config.UnpluggedPlayers;
 import dev.electricsteve.unpluggedPaper.kotlin.FakePlayerPlusJava;
@@ -55,12 +68,13 @@ import revxrsal.commands.bukkit.BukkitLamp;
 public final class UnpluggedPaper extends JavaPlugin implements Listener {
     private static final String REQUIRED_FPP_VERSION = "2.2.51";
 
-    public static Logger LOGGER = LogManager.getLogger("UnpluggedPaper");
+    public static final Logger LOGGER = LogManager.getLogger("UnpluggedPaper");
     private static boolean debug = Boolean.getBoolean("unplugged.debug"); // Set by command-line argument
 
     private final Path configFile = new File(getDataFolder(), "config.yml").toPath();
     private final Path playersFile = new File(getDataFolder(), "unplugged_players.yml").toPath();
     private YamlConfigurationStore<UnpluggedPlayers> playersConfigurationStore;
+    private YamlConfigurationStore<UnpluggedConfiguration> configurationStore;
     private final YamlConfigurationProperties configurationProperties = ConfigLib.BUKKIT_DEFAULT_PROPERTIES.toBuilder()
         .header(
             """
@@ -103,12 +117,9 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         }
 
         // Config
-        this.configuration = YamlConfigurations.update(
-            configFile,
-            UnpluggedConfiguration.class,
-            configurationProperties
-        );
+        configurationStore = new YamlConfigurationStore<>(UnpluggedConfiguration.class, configurationProperties);
         playersConfigurationStore = new YamlConfigurationStore<>(UnpluggedPlayers.class, playersConfigProperties);
+        this.configuration = configurationStore.update(configFile);
         this.unpluggedPlayersConfig = playersConfigurationStore.update(playersFile);
 
         if (this.configuration.getMain().debugMode()) debug = true;
@@ -117,10 +128,21 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
             return;
         }
 
+        TranslationStore.StringBased<MessageFormat> store = TranslationStore.messageFormat(Key.key("unplugged-paper", "translations"));
+        ResourceBundle bundle = ResourceBundle.getBundle("translations.Bundle", Locale.US);
+        store.registerAll(Locale.US, bundle, true);
+        GlobalTranslator.translator().addSource(store);
+
         // Initialize fpp component and commands
         this.fppComponent = new UnpluggedFppComponent();
         FakePlayerPlusPluginApi.Companion.getApi().registerComponent(fppComponent);
-        var lamp = BukkitLamp.builder(this).build();
+        var lamp = BukkitLamp.builder(this)
+            .parameterTypes(builder -> {
+                builder.addParameterType(UnpluggedPlayers.PlayerEntry.class, new PlayerEntryParameterType(this));
+                builder.addParameterType(UnpluggedPlayer.class, new UnpluggedPlayerParameterType(this));
+                builder.addParameterType(ConfigInstanceField.class, new ConfigurationVariableParameterType(this));
+            })
+            .build();
         lamp.register(new UnplugCommand(this));
         lamp.register(new AdminCommand(this));
 
@@ -143,6 +165,10 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         playersConfigurationStore.save(this.unpluggedPlayersConfig, playersFile);
     }
 
+    public void saveConfiguration() {
+        configurationStore.save(this.configuration, configFile);
+    }
+
     private void addBackUnpluggedPlayers() {
         long methodStartTime = System.nanoTime();
         List<UnpluggedPlayers.PlayerEntry> unpluggedPlayers = this.unpluggedPlayersConfig.getUnpluggedPlayers();
@@ -153,8 +179,8 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                 String name = playerEntry.getName();
                 UUID uuid = playerEntry.getUuid();
                 if (endTime <= currentTimeMillis) {
-                    playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED);
-                    this.broadcastPlugBack(Component.text(name), " AFK session expired", playerEntry.getTime());
+                    expired(uuid, playerEntry.getTime());
+                    this.broadcastPlugBack(Component.text(name), "unplugged.broadcast.expired", playerEntry.getTime());
                     this.savePlayersConfiguration();
                     return;
                 }
@@ -164,8 +190,8 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                 OfflinePlayer offlinePlayer = this.getServer().getOfflinePlayer(uuid);
                 if (offlinePlayer.isOnline() || offlinePlayer.isBanned()) {
                     debugLog("Not spawning player {} because they were either banned or a player with this UUID is already online.", uuid);
-                    playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.TERMINATED);
-                    broadcastPlugBack(Component.text(playerEntry.getName()), " AFK session terminated", durationHadMillis);
+                    terminated(playerEntry, durationHadMillis);
+                    broadcastPlugBack(Component.text(playerEntry.getName()), "unplugged.broadcast.terminated", durationHadMillis);
                     savePlayersConfiguration();
                     continue;
                 }
@@ -184,9 +210,9 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
 
                 // TODO: merge this with the one in `UnplugCommand`
                 FakePlayerManager fpm = this.fppComponent.getFpm();
-                FakePlayerPlusJava.getFromRepository(fpm, name).thenAccept(fakePlayer -> {
-                    if (fakePlayer != null) {
-                        UUID existingUuid = fakePlayer.getUuid();
+                FakePlayerPlusJava.getFromRepository(fpm, name).thenAccept(fakePlayerInRepository -> {
+                    if (fakePlayerInRepository != null) {
+                        UUID existingUuid = fakePlayerInRepository.getUuid();
                         if (!existingUuid.equals(uuid)) {
                             try {
                                 FakePlayerPlusJava.deleteFromRepository(fpm, existingUuid).get();
@@ -207,8 +233,8 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                         .enableAdvancements(true)
                         .durationMillis(durationLeftMillis)
                         .durationOverCallback(_ -> {
-                            this.getPlayerEntry(uuid).ifPresent(entry -> entry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED));
-                            this.broadcastPlugBack(Component.text(name), " AFK session expired", System.currentTimeMillis() - playerEntry.getStartTime());
+                            this.expired(uuid, playerEntry.getTime());
+                            this.broadcastPlugBack(Component.text(name), "unplugged.broadcast.expired", System.currentTimeMillis() - playerEntry.getStartTime());
                             this.savePlayersConfiguration();
                         })
                         .hidePlayer(this.configuration.getUnplugged().unpluggedHidePlayer())
@@ -226,7 +252,11 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         return this.unpluggedPlayersConfig.getUnpluggedPlayers().stream().filter(playerEntry -> playerEntry.getUuid().equals(uuid)).findFirst();
     }
 
-    public void updatePlayerEntry(UUID uuid, String name, UnpluggedPlayers.UnpluggedStatus status, long time, long startTime, String reason) {
+    public Optional<UnpluggedPlayers.PlayerEntry> getPlayerEntry(String name) {
+        return this.unpluggedPlayersConfig.getUnpluggedPlayers().stream().filter(playerEntry -> playerEntry.getName().equals(name)).findFirst();
+    }
+
+    public void updatePlayerEntry(UUID uuid, String name, UnpluggedPlayers.UnpluggedStatus status, long time, long startTime, @NotNull String reason) {
         Optional<UnpluggedPlayers.PlayerEntry> optionalPlayerEntry = getPlayerEntry(uuid);
         if (optionalPlayerEntry.isPresent()) {
             UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
@@ -256,7 +286,16 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                 UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
                 if (!playerEntry.getStatus().equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE)) return;
                 playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.RETURNED);
-                broadcastPlugBack(event.getPlayer().displayName(), " has returned", System.currentTimeMillis() - playerEntry.getStartTime());
+                playerEntry.setReason(MiniMessage.miniMessage().serialize(
+                    Component.text()
+                        .append(this.configuration.getMessages().displayDuration() ?
+                            Component.translatable("unplugged.feedback.interrupted.time", NamedTextColor.YELLOW, formatTimeDifference(System.currentTimeMillis() - playerEntry.getStartTime()))
+                            : Component.translatable("unplugged.feedback.interrupted", NamedTextColor.YELLOW))
+                        .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
+                            Component.translatable("unplugged.feedback.replaced", NamedTextColor.RED)))
+                        .build()
+                ));
+                broadcastPlugBack(event.getPlayer().displayName(), "unplugged.broadcast.replaced", System.currentTimeMillis() - playerEntry.getStartTime());
                 savePlayersConfiguration();
                 if (configuration.getMessages().hideUnpluggedJoin()) event.leaveMessage(null);
             }
@@ -292,8 +331,9 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
                     player.setHealth(attribute != null ? attribute.getValue() : 20);
                     event.setCancelled(true);
                 }
-                playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.TERMINATED);
-                broadcastPlugBack(player.displayName(), " AFK session terminated", System.currentTimeMillis() - playerEntry.getStartTime());
+                long durationHadMillis = System.currentTimeMillis() - playerEntry.getStartTime();
+                terminated(playerEntry, durationHadMillis);
+                broadcastPlugBack(player.displayName(), "unplugged.broadcast.terminated", System.currentTimeMillis() - playerEntry.getStartTime());
                 savePlayersConfiguration();
             }
         }
@@ -312,25 +352,36 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         // TODO: this shouldn't be here, move this to something proper when doing the api
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
+        // Hide join message if fake & config enabled
         if (isFakePlayer(uuid)) {
             if (configuration.getMessages().hideUnpluggedJoin()) event.joinMessage(null);
         }
+        // Hide fakes from real players if config enabled
         if (!isFakePlayer(uuid) && this.getConfiguration().getUnplugged().unpluggedHidePlayer() && (this.getConfiguration().getUnplugged().unpluggedHideFromOps() || !player.isOp())) this.getServer().getOnlinePlayers().stream()
             .filter(otherPlayer -> isFakePlayer(otherPlayer.getUniqueId()))
             .forEach(fakePlayer -> player.hidePlayer(this, fakePlayer));
         Optional<UnpluggedPlayers.PlayerEntry> optionalPlayerEntry = getPlayerEntry(uuid);
-        if (optionalPlayerEntry.isPresent() && !isFakePlayer(uuid)) {
-            UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
-            UnpluggedPlayers.UnpluggedStatus status = playerEntry.getStatus();
-            if (status.equals(UnpluggedPlayers.UnpluggedStatus.INACTIVE)) return;
-            if (status.equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE)) {
-                getComponentLogger().error("Illegal state: on real player join, it's Unplugged entry was ACTIVE");
-                return;
+        if (!isFakePlayer(uuid)) {
+            if (optionalPlayerEntry.isPresent()) {
+                UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
+                UnpluggedPlayers.UnpluggedStatus status = playerEntry.getStatus();
+                if (status.equals(UnpluggedPlayers.UnpluggedStatus.INACTIVE)) return;
+                if (status.equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE)) {
+                    getComponentLogger().error("Illegal state: on real player join, it's Unplugged entry was ACTIVE");
+                    return;
+                }
+                // Hide join message if the player was unplugged and config enabled
+                if (status.equals(UnpluggedPlayers.UnpluggedStatus.RETURNED) && configuration.getMessages().hideUnpluggedJoin()) {
+                    event.joinMessage(null);
+                }
+                if (!playerEntry.getReason().isEmpty() && configuration.getMessages().displayReturnFeedback()) {
+                    player.sendMessage(MiniMessage.miniMessage().deserialize(playerEntry.getReason()));
+                }
+                playerEntry.reset();
+            } else {
+                // Player has no entry, create one
+                this.updatePlayerEntry(uuid, player.getName(), UnpluggedPlayers.UnpluggedStatus.INACTIVE, -1, -1, "");
             }
-            if (status.equals(UnpluggedPlayers.UnpluggedStatus.RETURNED) && configuration.getMessages().hideUnpluggedJoin()) {
-                event.joinMessage(null);
-            }
-            playerEntry.reset();
         }
     }
 
@@ -340,18 +391,45 @@ public final class UnpluggedPaper extends JavaPlugin implements Listener {
         savePlayersConfiguration();
     }
 
-    public void broadcastPlugBack(Component playerComponent, String reasonString, long durationMillis) {
-        Component c = playerComponent.color(NamedTextColor.YELLOW).append(Component.text(reasonString, NamedTextColor.YELLOW));
+    public void broadcastPlugBack(Component playerComponent, String reasonTranslation, long durationMillis) {
+        Component c = Component.translatable(reasonTranslation, NamedTextColor.YELLOW, playerComponent);
         @SuppressWarnings("SpellCheckingInspection") // Don't spell check format string
         String durationString = DurationFormatUtils.formatDuration(durationMillis, "[d'd'H'h'm'm's's']", true);
         if (configuration.getMessages().displayDuration()) c =
-            c.append(Component.text(" (Gone for: ", NamedTextColor.GRAY))
-                .append(Component.text(durationString, NamedTextColor.GREEN)).append(Component.text(")", NamedTextColor.GRAY));
+            c.append(Component.translatable("unplugged.broadcast.time", NamedTextColor.GRAY, Component.text(durationString, NamedTextColor.GREEN)));
         broadcast(c);
     }
 
     public void broadcast(Component component) {
         if (!configuration.getMessages().broadcastMessages() || configuration.getUnplugged().unpluggedHidePlayer()) return;
         this.getServer().broadcast(component);
+    }
+
+    public void expired(UUID uuid, long durationMillis) {
+        this.getPlayerEntry(uuid).ifPresent(entry -> {
+            entry.setStatus(UnpluggedPlayers.UnpluggedStatus.EXPIRED);
+            entry.setReason(MiniMessage.miniMessage().serialize(
+                Component.text()
+                    .append(this.configuration.getMessages().displayDuration() ?
+                        Component.translatable("unplugged.feedback.successful.time", NamedTextColor.YELLOW, formatTimeDifference(durationMillis))
+                        : Component.translatable("unplugged.feedback.successful", NamedTextColor.YELLOW))
+                    .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
+                        Component.translatable("unplugged.feedback.expired", NamedTextColor.YELLOW)))
+                    .build()
+            ));
+        });
+    }
+
+    private void terminated(UnpluggedPlayers.PlayerEntry playerEntry, long durationHadMillis) {
+        playerEntry.setStatus(UnpluggedPlayers.UnpluggedStatus.TERMINATED);
+        playerEntry.setReason(MiniMessage.miniMessage().serialize(
+            Component.text()
+                .append(this.configuration.getMessages().displayDuration() ?
+                    Component.translatable("unplugged.feedback.interrupted.time", NamedTextColor.YELLOW, formatTimeDifference(durationHadMillis))
+                    : Component.translatable("unplugged.feedback.interrupted", NamedTextColor.YELLOW))
+                .append(Component.translatable("unplugged.feedback.reason", NamedTextColor.GRAY,
+                    Component.translatable("unplugged.feedback.terminated", NamedTextColor.RED)))
+                .build()
+        ));
     }
 }
