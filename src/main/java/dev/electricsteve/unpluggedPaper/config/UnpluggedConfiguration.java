@@ -22,7 +22,7 @@ public class UnpluggedConfiguration {
         boolean unpluggedPaperEnabled,
         @Comment("Enables debugging output.")
         boolean debugMode,
-        @Comment("[DOES NOTHING ATM] Enables reduced output for various information commands")
+        @Comment("Enables reduced output for various information commands")
         boolean reducedListDebugInfo,
         @Comment("[DOES NOTHING ATM] Enables advanced Admin options, such as 'set'.")
         boolean advancedAdminOptions

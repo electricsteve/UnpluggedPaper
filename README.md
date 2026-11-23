@@ -38,12 +38,8 @@ Full feature difference list:
 - No `/afk` command, I recommend you use another plugin that allows you to create command aliases if you want this command back.
 - All times are relative to IRL time, not minecraft ticks (it seems unplugged-afk kinda relies on ticks, not quite sure)
 - Not all configs implemented yet
-- `/unplugged-admin` command only half implemented
-  - `reload` implemented, shouldn't really be different
-  - `list` implemented, but format is slightly different
-  - `purge` implemented, shouldn't really be different
-  - `info` implemented, but format just as different as list
-  - `spawn`, `kick`, `save` and `set` are not implemented yet
+- `/unplugged-admin` maybe has slight differences
+  - Also added `get` to get config values
 
 ## Install
 

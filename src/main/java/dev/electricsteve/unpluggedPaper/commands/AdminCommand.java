@@ -93,8 +93,9 @@ public class AdminCommand {
     @Subcommand("list")
     public void list(BukkitCommandActor actor, ListArgument listArgument) {
         TextComponent.Builder finalBuilder = Component.text();
-        if (listArgument == ListArgument.ALL || listArgument == ListArgument.PLAYERS) playerMap(finalBuilder);
-        if (listArgument == ListArgument.ALL) finalBuilder.append(Component.text("\n\n"));
+        if (listArgument == ListArgument.ALL || listArgument == ListArgument.PLAYERS)
+            playerMap(finalBuilder, listArgument == ListArgument.PLAYERS);
+        if (listArgument == ListArgument.ALL && listDebugInfo()) finalBuilder.append(Component.text("\n\n"));
         if (listArgument == ListArgument.ALL || listArgument == ListArgument.UNPLUGGED) unpluggedMap(finalBuilder);
         actor.reply(finalBuilder.build());
     }
@@ -111,7 +112,11 @@ public class AdminCommand {
         finalBuilder.append(Component.translatable("unplugged.map.total", NamedTextColor.GOLD, Component.text(i + 1)));
     }
 
-    private void playerMap(TextComponent.Builder finalBuilder) {
+    private void playerMap(TextComponent.Builder finalBuilder, boolean onlyThis) {
+        if (!listDebugInfo()) {
+            if (onlyThis) finalBuilder.append(Component.translatable("unplugged.debug.player_list_disabled", NamedTextColor.LIGHT_PURPLE));
+            return;
+        }
         int i = -1;
         finalBuilder.append(Component.translatable("unplugged.playermap.title", NamedTextColor.LIGHT_PURPLE));
         for (UnpluggedPlayers.PlayerEntry entry : plugin.getUnpluggedPlayersConfig().getUnpluggedPlayers()) {
@@ -130,7 +135,17 @@ public class AdminCommand {
             actor.reply(Component.translatable("unplugged.info.error", NamedTextColor.RED));
             return;
         }
-        actor.reply(Component.text("\n").append(getPlayerDebugText(optionalPlayerEntry.get(), -1, target)));
+        UnpluggedPlayers.PlayerEntry playerEntry = optionalPlayerEntry.get();
+        TextComponent.Builder component = Component.text();
+        if (listDebugInfo()) component.append(getPlayerDebugText(optionalPlayerEntry.get(), -1, target));
+        if (playerEntry.getStatus().equals(UnpluggedPlayers.UnpluggedStatus.ACTIVE))
+            component.append(getUnpluggedDebugText(playerEntry, -1));
+        else if (!listDebugInfo()) {
+            String name = target.getName();
+            if (name == null || name.isEmpty()) name = "ERROR";
+            component.append(Component.translatable("unplugged.debug.not_unplugged", NamedTextColor.GOLD, Component.text(name)));
+        }
+        actor.reply(component);
     }
 
     @Subcommand("spawn")
@@ -344,9 +359,13 @@ public class AdminCommand {
     private @NotNull TextComponent getUnpluggedDebugText(UnpluggedPlayers.PlayerEntry entry, int i) {
         // We assume this is an active session
         TextComponent.Builder builder = Component.text();
-        builder.append(Component.translatable("unplugged.debug.entry", NamedTextColor.BLUE, Component.text(String.format("%02d", i))));
+        if (i >= 0) {
+            builder.append(Component.translatable("unplugged.debug.entry", NamedTextColor.BLUE, Component.text(String.format("%02d", i))));
+        } else {
+            builder.append(Component.translatable("unplugged.debug.unplugged_info", NamedTextColor.BLUE));
+        }
         builder.append(detailLine("Name", entry.getName(), NamedTextColor.WHITE));
-        builder.append(detailLine("UUID", entry.getUuid().toString(), NamedTextColor.WHITE));
+        if (listDebugInfo()) builder.append(detailLine("UUID", entry.getUuid().toString(), NamedTextColor.WHITE));
         builder.append(detailLine("Status", entry.getStatus().getName(), NamedTextColor.GREEN));
         long timeLeftMillis = (entry.getTime() + entry.getStartTime()) - System.currentTimeMillis();
         if (timeLeftMillis < 0) timeLeftMillis = 1;
@@ -357,12 +376,16 @@ public class AdminCommand {
             "[d' days 'H' hours 'm' minutes 's' seconds']", true);
         String startTime = Instant.ofEpochMilli(entry.getStartTime()).toString();
         builder.append(detailLine("Time left", timeLeft, NamedTextColor.GOLD));
-        if (!plugin.getConfiguration().getMain().reducedListDebugInfo()) {
+        if (listDebugInfo()) {
             builder.append(detailLine("Total duration", duration, NamedTextColor.GREEN));
             builder.append(detailLine("Since", startTime, NamedTextColor.GREEN));
         }
         builder.append(detailLine("Reason", entry.getReason(), NamedTextColor.YELLOW));
         return builder.build();
+    }
+
+    private boolean listDebugInfo() {
+        return !plugin.getConfiguration().getMain().reducedListDebugInfo();
     }
 
     private @NotNull TextComponent getPlayerDebugText(UnpluggedPlayers.PlayerEntry entry, int i, OfflinePlayer offlinePlayer) {
@@ -396,7 +419,7 @@ public class AdminCommand {
         if (i >= 0) {
             builder.append(Component.translatable("unplugged.debug.entry", NamedTextColor.BLUE, Component.text(String.format("%02d", i))));
         } else {
-            builder.append(Component.translatable("unplugged.debug.info", NamedTextColor.BLUE));
+            builder.append(Component.translatable("unplugged.debug.player_info", NamedTextColor.BLUE));
         }
         builder.append(detailLine("Name", entry.getName(), NamedTextColor.WHITE));
         builder.append(detailLine("UUID", entry.getUuid().toString(), NamedTextColor.WHITE));
